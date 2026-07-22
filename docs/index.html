@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Accelerometer Data — Normalized Plot</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --grid:#2a2f3a; --text:#e6e8eb; --muted:#9aa3af;
+    --x-color:#ff6b6b; --y-color:#4ecdc4; --z-color:#ffd93d;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:24px; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  h1{font-size:18px; font-weight:600; margin:0 0 4px;}
+  p.sub{color:var(--muted); font-size:13px; margin:0 0 16px;}
+  #status{color:var(--muted); font-size:13px; margin-bottom:12px;}
+  .panel{
+    background:var(--panel); border:1px solid var(--grid); border-radius:10px;
+    padding:16px; max-width:1100px;
+  }
+  .controls{display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:12px; font-size:13px;}
+  .legend-item{display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;}
+  .swatch{width:12px; height:12px; border-radius:3px; display:inline-block;}
+  .legend-item.off{opacity:0.35;}
+  input[type=range]{width:220px;}
+  input[type=file]{color:var(--text);}
+  canvas{width:100%; display:block; background:#0d0f13; border-radius:6px;}
+  .row{display:flex; gap:24px; flex-wrap:wrap; align-items:center;}
+  #tooltip{
+    position:fixed; background:#1e222b; border:1px solid var(--grid); padding:6px 10px;
+    border-radius:6px; font-size:12px; pointer-events:none; display:none; white-space:nowrap;
+  }
+  label{color:var(--muted);}
+  button{background:#232833; color:var(--text); border:1px solid var(--grid); border-radius:6px; padding:6px 10px; cursor:pointer;}
+</style>
+</head>
+<body>
+
+<h1>Accelerometer Data — Normalized Plot</h1>
+<p class="sub">Load any CSV file (time, X, Y, Z — no header) from your local disk.</p>
+
+<div class="row" style="margin-bottom:16px;">
+  <input type="file" id="fileInput" accept=".txt,.csv">
+</div>
+<div id="status">No file loaded.</div>
+
+<div class="panel" id="panel" style="display:none;">
+  <div class="row controls">
+    <div class="legend-item" data-series="x"><span class="swatch" style="background:var(--x-color)"></span>X</div>
+    <div class="legend-item" data-series="y"><span class="swatch" style="background:var(--y-color)"></span>Y</div>
+    <div class="legend-item" data-series="z"><span class="swatch" style="background:var(--z-color)"></span>Z</div>
+    <label>Zoom: <input id="zoom" type="range" min="1" max="100" value="100"></label>
+    <label>Pan: <input id="pan" type="range" min="0" max="0" value="0"></label>
+    <button id="reset">Reset view</button>
+  </div>
+  <canvas id="chart" width="1000" height="420"></canvas>
+</div>
+<div id="tooltip"></div>
+
+<script>
+const statusEl = document.getElementById('status');
+const fileInput = document.getElementById('fileInput');
+const panel = document.getElementById('panel');
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const tooltip = document.getElementById('tooltip');
+const zoomSlider = document.getElementById('zoom');
+const panSlider = document.getElementById('pan');
+
+let n=0, time=[], x=[], y=[], z=[], xN, yN, zN;
+const visible = { x: true, y: true, z: true };
+let viewStart = 0, viewEnd = 0;
+
+const cssWidth = 1000, cssHeight = 420;
+const margin = { top: 20, right: 20, bottom: 30, left: 44 };
+const plotW = cssWidth - margin.left - margin.right;
+const plotH = cssHeight - margin.top - margin.bottom;
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  statusEl.textContent = 'Reading ' + file.name + '…';
+  const reader = new FileReader();
+  reader.onload = (ev) => parseAndPlot(ev.target.result, file.name);
+  reader.onerror = () => statusEl.textContent = 'Error reading file.';
+  reader.readAsText(file);
+});
+
+function parseAndPlot(text, filename){
+  const lines = text.split('\n').filter(l => l.trim().length > 0);
+  time = new Array(lines.length); x = new Array(lines.length);
+  y = new Array(lines.length); z = new Array(lines.length);
+  n = 0;
+  for (let i = 0; i < lines.length; i++){
+    const parts = lines[i].split(',');
+    if (parts.length < 4) continue;
+    time[n] = parseFloat(parts[0]);
+    x[n] = parseFloat(parts[1]);
+    y[n] = parseFloat(parts[2]);
+    z[n] = parseFloat(parts[3]);
+    n++;
+  }
+  time.length = n; x.length = n; y.length = n; z.length = n;
+
+  if (n === 0){
+    statusEl.textContent = 'No valid rows parsed from ' + filename + '.';
+    panel.style.display = 'none';
+    return;
+  }
+
+  xN = normalize(x); yN = normalize(y); zN = normalize(z);
+
+  statusEl.textContent =
+    filename + ' · ' + n.toLocaleString() + ' samples · time [' + time[0].toFixed(2) + ', ' + time[n-1].toFixed(2) + ']s · ' +
+    'X raw [' + xN.min + ', ' + xN.max + '] · Y raw [' + yN.min + ', ' + yN.max + '] · Z raw [' + zN.min + ', ' + zN.max + ']';
+
+  panel.style.display = 'block';
+  setupCanvas();
+  updatePanRange();
+  draw();
+}
+
+function normalize(arr){
+  let min = Infinity, max = -Infinity;
+  for (let i = 0; i < arr.length; i++){
+    if (arr[i] < min) min = arr[i];
+    if (arr[i] > max) max = arr[i];
+  }
+  const range = (max - min) || 1;
+  const out = new Array(arr.length);
+  for (let i = 0; i < arr.length; i++) out[i] = 2 * (arr[i] - min) / range - 1;
+  return { data: out, min, max };
+}
+
+let dpr = 1;
+function setupCanvas(){
+  dpr = window.devicePixelRatio || 1;
+  canvas.width = cssWidth * dpr;
+  canvas.height = cssHeight * dpr;
+  canvas.style.width = cssWidth + 'px';
+  canvas.style.height = cssHeight + 'px';
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+}
+
+function updatePanRange(){
+  const windowSize = Math.max(2, Math.round(n * (zoomSlider.value / 100)));
+  panSlider.max = Math.max(0, n - windowSize);
+  if (parseInt(panSlider.value) > panSlider.max) panSlider.value = panSlider.max;
+  viewStart = parseInt(panSlider.value);
+  viewEnd = viewStart + windowSize;
+}
+
+function draw(){
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+  ctx.strokeStyle = '#2a2f3a';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#9aa3af';
+  ctx.font = '11px sans-serif';
+  [-1,-0.5,0,0.5,1].forEach(t => {
+    const yPix = margin.top + plotH * (1 - (t + 1) / 2);
+    ctx.beginPath();
+    ctx.moveTo(margin.left, yPix);
+    ctx.lineTo(margin.left + plotW, yPix);
+    ctx.stroke();
+    ctx.fillText(t.toFixed(1), 4, yPix + 3);
+  });
+
+  const startIdx = Math.max(0, viewStart);
+  const endIdx = Math.min(n - 1, viewEnd);
+  const span = Math.max(1, endIdx - startIdx);
+
+  ctx.fillText(time[startIdx].toFixed(2) + 's', margin.left, cssHeight - 8);
+  ctx.fillText(time[endIdx].toFixed(2) + 's', margin.left + plotW - 40, cssHeight - 8);
+
+  function plotSeries(dataArr, color){
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    const step = Math.max(1, Math.floor(span / plotW));
+    let first = true;
+    for (let i = startIdx; i <= endIdx; i += step){
+      const px = margin.left + ((i - startIdx) / span) * plotW;
+      const py = margin.top + plotH * (1 - (dataArr[i] + 1) / 2);
+      if (first){ ctx.moveTo(px, py); first = false; }
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  const styles = getComputedStyle(document.documentElement);
+  if (visible.x) plotSeries(xN.data, styles.getPropertyValue('--x-color').trim());
+  if (visible.y) plotSeries(yN.data, styles.getPropertyValue('--y-color').trim());
+  if (visible.z) plotSeries(zN.data, styles.getPropertyValue('--z-color').trim());
+}
+
+zoomSlider.addEventListener('input', () => { updatePanRange(); draw(); });
+panSlider.addEventListener('input', () => {
+  const windowSize = viewEnd - viewStart;
+  viewStart = parseInt(panSlider.value);
+  viewEnd = viewStart + windowSize;
+  draw();
+});
+document.getElementById('reset').addEventListener('click', () => {
+  zoomSlider.value = 100; panSlider.value = 0; updatePanRange(); draw();
+});
+document.querySelectorAll('.legend-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const s = el.dataset.series;
+    visible[s] = !visible[s];
+    el.classList.toggle('off', !visible[s]);
+    draw();
+  });
+});
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  if (mx < margin.left || mx > margin.left + plotW){ tooltip.style.display = 'none'; return; }
+  const startIdx = Math.max(0, viewStart);
+  const endIdx = Math.min(n - 1, viewEnd);
+  const span = Math.max(1, endIdx - startIdx);
+  const idx = startIdx + Math.round(((mx - margin.left) / plotW) * span);
+  if (idx < 0 || idx >= n){ tooltip.style.display = 'none'; return; }
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 12) + 'px';
+  tooltip.style.top = (e.clientY + 12) + 'px';
+  tooltip.innerHTML =
+    't=' + time[idx].toFixed(3) + 's<br>' +
+    'X: ' + xN.data[idx].toFixed(3) + ' (raw ' + x[idx] + ')<br>' +
+    'Y: ' + yN.data[idx].toFixed(3) + ' (raw ' + y[idx] + ')<br>' +
+    'Z: ' + zN.data[idx].toFixed(3) + ' (raw ' + z[idx] + ')';
+});
+canvas.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+</script>
+
+</body>
+</html>
