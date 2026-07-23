@@ -127,6 +127,12 @@ if __name__ == "__main__":
 
     filename = "Polar_H10_1D61CD3D_1784733608827_ACC.txt"
     data = np.loadtxt(filename, delimiter=",")
+    data = np.array(data)
 
+    col = np.sqrt(data[:,1]**2 + data[:,2]**2 + data[:,3]**2 )
+    data = np.hstack((data, col[:,None]))
+    print( data.shape )
+
+    
     app = build_app(data)
     app.run(debug=True)
