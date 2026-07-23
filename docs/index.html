@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Accelerometer Data — Normalized Plot</title>
+<title>Time-Series Data — Normalized Multi-File Plot</title>
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --grid:#2a2f3a; --text:#e6e8eb; --muted:#9aa3af;
-    --x-color:#ff6b6b; --y-color:#4ecdc4; --z-color:#ffd93d;
   }
   *{box-sizing:border-box;}
   body{
@@ -15,14 +14,17 @@
   }
   h1{font-size:18px; font-weight:600; margin:0 0 4px;}
   p.sub{color:var(--muted); font-size:13px; margin:0 0 16px;}
-  #status{color:var(--muted); font-size:13px; margin-bottom:12px;}
+  #status{color:var(--muted); font-size:13px; margin-bottom:12px; white-space:pre-line;}
   .panel{
     background:var(--panel); border:1px solid var(--grid); border-radius:10px;
     padding:16px; max-width:1100px;
   }
   .controls{display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-bottom:12px; font-size:13px;}
-  .legend-item{display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;}
-  .swatch{width:12px; height:12px; border-radius:3px; display:inline-block;}
+  .legend-group{border:1px solid var(--grid); border-radius:6px; padding:6px 10px; margin-bottom:8px;}
+  .legend-group-title{font-size:12px; color:var(--muted); margin-bottom:4px; display:flex; justify-content:space-between; gap:8px;}
+  .legend-items{display:flex; gap:10px; flex-wrap:wrap;}
+  .legend-item{display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; font-size:13px;}
+  .swatch{width:12px; height:3px; border-radius:2px; display:inline-block;}
   .legend-item.off{opacity:0.35;}
   input[type=range]{width:220px;}
   input[type=file]{color:var(--text);}
@@ -34,25 +36,26 @@
   }
   label{color:var(--muted);}
   button{background:#232833; color:var(--text); border:1px solid var(--grid); border-radius:6px; padding:6px 10px; cursor:pointer;}
+  .rm-btn{background:none; border:none; color:var(--muted); cursor:pointer; font-size:12px; padding:0 4px;}
+  .rm-btn:hover{color:#ff6b6b;}
 </style>
 </head>
 <body>
 
-<h1>Accelerometer Data — Normalized Plot</h1>
-<p class="sub">Load any CSV file (time, X, Y, Z — no header) from your local disk.</p>
+<h1>Time-Series Data — Normalized Multi-File Plot</h1>
+<p class="sub">Load one or more CSV files (time, col_1, ..., col_N — no header). Each file loaded via "Choose file" is added as an overlay on the same chart.</p>
 
 <div class="row" style="margin-bottom:16px;">
   <input type="file" id="fileInput" accept=".txt,.csv">
+  <button id="clearAll">Clear all</button>
 </div>
 <div id="status">No file loaded.</div>
 
 <div class="panel" id="panel" style="display:none;">
+  <div id="legendGroups"></div>
   <div class="row controls">
-    <div class="legend-item" data-series="x"><span class="swatch" style="background:var(--x-color)"></span>X</div>
-    <div class="legend-item" data-series="y"><span class="swatch" style="background:var(--y-color)"></span>Y</div>
-    <div class="legend-item" data-series="z"><span class="swatch" style="background:var(--z-color)"></span>Z</div>
     <label>Zoom: <input id="zoom" type="range" min="1" max="100" value="100"></label>
-    <label>Pan: <input id="pan" type="range" min="0" max="0" value="0"></label>
+    <label>Scroll: <input id="scrollX" type="range" min="0" max="1000" value="0" style="width:400px;"></label>
     <button id="reset">Reset view</button>
   </div>
   <canvas id="chart" width="1000" height="420"></canvas>
@@ -60,69 +63,48 @@
 <div id="tooltip"></div>
 
 <script>
-const statusEl = document.getElementById('status');
-const fileInput = document.getElementById('fileInput');
-const panel = document.getElementById('panel');
-const canvas = document.getElementById('chart');
-const ctx = canvas.getContext('2d');
-const tooltip = document.getElementById('tooltip');
-const zoomSlider = document.getElementById('zoom');
-const panSlider = document.getElementById('pan');
+/* ---------- reusable, pure/data functions ---------- */
 
-let n=0, time=[], x=[], y=[], z=[], xN, yN, zN;
-const visible = { x: true, y: true, z: true };
-let viewStart = 0, viewEnd = 0;
+const PALETTE = ['#ff6b6b','#4ecdc4','#ffd93d','#6a8dff','#c77dff','#7bdb6c','#ff9f6b','#f06bd0','#6bffe0','#d0d06b'];
+const DASHES  = [[], [6,4], [2,2], [8,3,2,3]]; // one dash pattern per file
 
-const cssWidth = 1000, cssHeight = 420;
-const margin = { top: 20, right: 20, bottom: 30, left: 44 };
-const plotW = cssWidth - margin.left - margin.right;
-const plotH = cssHeight - margin.top - margin.bottom;
-
-fileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  statusEl.textContent = 'Reading ' + file.name + '…';
-  const reader = new FileReader();
-  reader.onload = (ev) => parseAndPlot(ev.target.result, file.name);
-  reader.onerror = () => statusEl.textContent = 'Error reading file.';
-  reader.readAsText(file);
-});
-
-function parseAndPlot(text, filename){
-  const lines = text.split('\n').filter(l => l.trim().length > 0);
-  time = new Array(lines.length); x = new Array(lines.length);
-  y = new Array(lines.length); z = new Array(lines.length);
-  n = 0;
-  for (let i = 0; i < lines.length; i++){
-    const parts = lines[i].split(',');
-    if (parts.length < 4) continue;
-    time[n] = parseFloat(parts[0]);
-    x[n] = parseFloat(parts[1]);
-    y[n] = parseFloat(parts[2]);
-    z[n] = parseFloat(parts[3]);
-    n++;
-  }
-  time.length = n; x.length = n; y.length = n; z.length = n;
-
-  if (n === 0){
-    statusEl.textContent = 'No valid rows parsed from ' + filename + '.';
-    panel.style.display = 'none';
-    return;
-  }
-
-  xN = normalize(x); yN = normalize(y); zN = normalize(z);
-
-  statusEl.textContent =
-    filename + ' · ' + n.toLocaleString() + ' samples · time [' + time[0].toFixed(2) + ', ' + time[n-1].toFixed(2) + ']s · ' +
-    'X raw [' + xN.min + ', ' + xN.max + '] · Y raw [' + yN.min + ', ' + yN.max + '] · Z raw [' + zN.min + ', ' + zN.max + ']';
-
-  panel.style.display = 'block';
-  setupCanvas();
-  updatePanRange();
-  draw();
+function readFileAsText(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => resolve(ev.target.result);
+    reader.onerror = () => reject(new Error('Error reading file: ' + file.name));
+    reader.readAsText(file);
+  });
 }
 
-function normalize(arr){
+// Generic CSV parser: first column = time, remaining columns = N series (no header assumed)
+function parseCSV(text){
+  const lines = text.split('\n').filter(l => l.trim().length > 0);
+  if (lines.length === 0) return null;
+
+  const numCols = lines[0].split(',').length;
+  const numSeries = numCols - 1;
+  if (numSeries < 1) return null;
+
+  const time = new Array(lines.length);
+  const rawCols = Array.from({ length: numSeries }, () => new Array(lines.length));
+
+  let n = 0;
+  for (let i = 0; i < lines.length; i++){
+    const parts = lines[i].split(',');
+    if (parts.length < numCols) continue;
+    time[n] = parseFloat(parts[0]);
+    for (let c = 0; c < numSeries; c++) rawCols[c][n] = parseFloat(parts[c + 1]);
+    n++;
+  }
+  time.length = n;
+  rawCols.forEach(col => col.length = n);
+  if (n === 0) return null;
+
+  return { time, columns: rawCols };
+}
+
+function normalizeArray(arr){
   let min = Infinity, max = -Infinity;
   for (let i = 0; i < arr.length; i++){
     if (arr[i] < min) min = arr[i];
@@ -134,23 +116,282 @@ function normalize(arr){
   return { data: out, min, max };
 }
 
+// Build a dataset object (one per loaded file) from parsed CSV data
+function buildDataset(filename, parsed, datasetIndex){
+  const columns = parsed.columns.map((raw, i) => ({
+    name: 'col_' + (i + 1),
+    raw,
+    norm: normalizeArray(raw),
+    color: PALETTE[i % PALETTE.length],
+    visible: true
+  }));
+  return {
+    id: 'ds_' + datasetIndex + '_' + Date.now(),
+    filename,
+    time: parsed.time,
+    columns,
+    dash: DASHES[datasetIndex % DASHES.length],
+    rawMode: false // false = plot normalized [-1,1], true = plot original [min,max]
+  };
+}
+
+// Binary search: first index in sorted ascending arr with value >= target
+function lowerBound(arr, target){
+  let lo = 0, hi = arr.length;
+  while (lo < hi){
+    const mid = (lo + hi) >> 1;
+    if (arr[mid] < target) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+function computeGlobalTimeRange(datasets){
+  let min = Infinity, max = -Infinity;
+  datasets.forEach(ds => {
+    if (ds.time.length === 0) return;
+    if (ds.time[0] < min) min = ds.time[0];
+    if (ds.time[ds.time.length - 1] > max) max = ds.time[ds.time.length - 1];
+  });
+  if (min === Infinity){ min = 0; max = 1; }
+  return { min, max };
+}
+
+/* ---------- app state ---------- */
+
+const statusEl = document.getElementById('status');
+const fileInput = document.getElementById('fileInput');
+const panel = document.getElementById('panel');
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const tooltip = document.getElementById('tooltip');
+const zoomSlider = document.getElementById('zoom');
+const scrollSlider = document.getElementById('scrollX');
+const legendGroupsEl = document.getElementById('legendGroups');
+
+let datasets = [];
+let globalRange = { min: 0, max: 1 };
+let viewStart = 0, viewEnd = 1;
+
+let cssWidth = 1000;
+const cssHeight = 420;
+const margin = { top: 20, right: 20, bottom: 30, left: 44 };
+let plotW = cssWidth - margin.left - margin.right;
+const plotH = cssHeight - margin.top - margin.bottom;
 let dpr = 1;
+
+/* ---------- UI wiring ---------- */
+
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  fileInput.value = ''; // allow reselecting the same file later
+  if (!file) return;
+
+  statusEl.textContent = 'Reading ' + file.name + '…';
+  let text;
+  try { text = await readFileAsText(file); }
+  catch (err){ statusEl.textContent = err.message; return; }
+
+  const parsed = parseCSV(text);
+  if (!parsed){
+    statusEl.textContent = 'No valid rows parsed from ' + file.name + '.';
+    return;
+  }
+
+  const ds = buildDataset(file.name, parsed, datasets.length);
+  datasets.push(ds);
+  onDatasetsChanged();
+});
+
+document.getElementById('clearAll').addEventListener('click', () => {
+  datasets = [];
+  onDatasetsChanged();
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+  zoomSlider.value = 100; viewCenter = null; updateViewFromZoom(); draw();
+});
+
+zoomSlider.addEventListener('input', () => { updateViewFromZoom(); draw(); });
+scrollSlider.addEventListener('input', () => { updateViewFromScroll(); draw(); });
+
+canvas.addEventListener('mousemove', onCanvasHover);
+canvas.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+
+/* ---------- orchestration ---------- */
+
+function onDatasetsChanged(){
+  if (datasets.length === 0){
+    panel.style.display = 'none';
+    statusEl.textContent = 'No file loaded.';
+    legendGroupsEl.innerHTML = '';
+    return;
+  }
+  globalRange = computeGlobalTimeRange(datasets);
+  buildLegendGroups();
+  updateStatus();
+  panel.style.display = 'block';
+  setupCanvas();
+  zoomSlider.value = 100; viewCenter = null;
+  updateViewFromZoom();
+  draw();
+}
+
+function updateStatus(){
+  const lines = datasets.map(ds => {
+    const ranges = ds.columns.map(c => c.name + ' [' + c.norm.min + ', ' + c.norm.max + ']').join(' · ');
+    return ds.filename + ' — ' + ds.time.length.toLocaleString() + ' samples, time [' +
+      ds.time[0].toFixed(2) + ', ' + ds.time[ds.time.length - 1].toFixed(2) + ']s · ' + ranges;
+  });
+  statusEl.textContent = lines.join('\n');
+}
+
+function buildLegendGroups(){
+  legendGroupsEl.innerHTML = '';
+  datasets.forEach((ds, dsIdx) => {
+    const group = document.createElement('div');
+    group.className = 'legend-group';
+
+    const title = document.createElement('div');
+    title.className = 'legend-group-title';
+    title.innerHTML = '<span>' + ds.filename + '</span>';
+    const rescaleBtn = document.createElement('button');
+    rescaleBtn.className = 'rm-btn';
+    rescaleBtn.textContent = ds.rawMode ? 'rescale: [min,max]' : 'rescale: [-1,1]';
+    rescaleBtn.addEventListener('click', () => {
+      ds.rawMode = !ds.rawMode;
+      buildLegendGroups();
+      draw();
+    });
+    title.appendChild(rescaleBtn);
+
+    const rmBtn = document.createElement('button');
+    rmBtn.className = 'rm-btn';
+    rmBtn.textContent = 'remove';
+    rmBtn.addEventListener('click', () => {
+      datasets = datasets.filter(d => d.id !== ds.id);
+      onDatasetsChanged();
+    });
+    title.appendChild(rmBtn);
+    group.appendChild(title);
+
+    const items = document.createElement('div');
+    items.className = 'legend-items';
+    ds.columns.forEach(col => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      const rangeTxt = ds.rawMode ? ' [' + col.norm.min + ', ' + col.norm.max + ']' : ' [-1, 1]';
+      item.innerHTML = '<span class="swatch" style="background:' + col.color + '"></span>' + col.name + rangeTxt;
+      item.addEventListener('click', () => {
+        col.visible = !col.visible;
+        item.classList.toggle('off', !col.visible);
+        draw();
+      });
+      items.appendChild(item);
+    });
+    group.appendChild(items);
+    legendGroupsEl.appendChild(group);
+  });
+}
+
 function setupCanvas(){
   dpr = window.devicePixelRatio || 1;
+  cssWidth = canvas.clientWidth || canvas.parentElement.clientWidth || 1000;
+  plotW = cssWidth - margin.left - margin.right;
   canvas.width = cssWidth * dpr;
   canvas.height = cssHeight * dpr;
-  canvas.style.width = cssWidth + 'px';
   canvas.style.height = cssHeight + 'px';
   ctx.setTransform(1,0,0,1,0,0);
   ctx.scale(dpr, dpr);
 }
 
-function updatePanRange(){
-  const windowSize = Math.max(2, Math.round(n * (zoomSlider.value / 100)));
-  panSlider.max = Math.max(0, n - windowSize);
-  if (parseInt(panSlider.value) > panSlider.max) panSlider.value = panSlider.max;
-  viewStart = parseInt(panSlider.value);
-  viewEnd = viewStart + windowSize;
+window.addEventListener('resize', () => {
+  if (datasets.length === 0) return;
+  setupCanvas();
+  draw();
+});
+
+let viewCenter = null; // time value at the center of the current window
+
+function updateViewFromZoom(){
+  const totalSpan = globalRange.max - globalRange.min;
+  const windowSpan = Math.max(totalSpan * (zoomSlider.value / 100), totalSpan / 10000);
+  if (viewCenter === null) viewCenter = globalRange.min + totalSpan / 2;
+
+  let start = viewCenter - windowSpan / 2;
+  start = Math.max(globalRange.min, Math.min(start, globalRange.max - windowSpan));
+  viewStart = start;
+  viewEnd = start + windowSpan;
+  viewCenter = viewStart + windowSpan / 2;
+  syncScrollSliderToView();
+}
+
+function updateViewFromScroll(){
+  const totalSpan = globalRange.max - globalRange.min;
+  const windowSpan = viewEnd - viewStart;
+  const maxStart = Math.max(0, totalSpan - windowSpan);
+  const frac = scrollSlider.value / 1000;
+  viewStart = globalRange.min + frac * maxStart;
+  viewEnd = viewStart + windowSpan;
+  viewCenter = viewStart + windowSpan / 2;
+}
+
+function syncScrollSliderToView(){
+  const totalSpan = globalRange.max - globalRange.min;
+  const windowSpan = viewEnd - viewStart;
+  const maxStart = Math.max(0, totalSpan - windowSpan);
+  const frac = maxStart > 0 ? (viewStart - globalRange.min) / maxStart : 0;
+  scrollSlider.value = Math.round(frac * 1000);
+}
+
+/* ---------- drawing ---------- */
+
+// Computes the single active Y-axis range: [-1,1] normalized by default,
+// or the real combined [min,max] across all visible raw-mode columns.
+function computeAxisRange(){
+  let min = Infinity, max = -Infinity;
+  let anyRaw = false;
+  datasets.forEach(ds => {
+    if (!ds.rawMode) return;
+    ds.columns.forEach(col => {
+      if (!col.visible) return;
+      anyRaw = true;
+      if (col.norm.min < min) min = col.norm.min;
+      if (col.norm.max > max) max = col.norm.max;
+    });
+  });
+  if (!anyRaw) return { mode: 'norm', min: -1, max: 1 };
+  return { mode: 'raw', min, max };
+}
+
+// Maps a data point to its normalized [0,1] vertical fraction under the
+// currently active axis range (so raw-mode and normalized series share one axis).
+function toAxisFraction(col, i, axisRange){
+  if (axisRange.mode === 'norm') return (col.norm.data[i] + 1) / 2;
+  const raw = col.raw[i];
+  return (raw - axisRange.min) / (axisRange.max - axisRange.min);
+}
+
+function plotSeries(ds, col, axisRange){
+  const startIdx = lowerBound(ds.time, viewStart);
+  let endIdx = lowerBound(ds.time, viewEnd);
+  endIdx = Math.min(endIdx, ds.time.length - 1);
+  if (endIdx <= startIdx) return;
+
+  ctx.setLineDash(ds.dash);
+  ctx.strokeStyle = col.color;
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+
+  const step = Math.max(1, Math.floor((endIdx - startIdx) / plotW));
+  let first = true;
+  for (let i = startIdx; i <= endIdx; i += step){
+    const px = margin.left + ((ds.time[i] - viewStart) / (viewEnd - viewStart)) * plotW;
+    const py = margin.top + plotH * (1 - toAxisFraction(col, i, axisRange));
+    if (first){ ctx.moveTo(px, py); first = false; }
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function draw(){
@@ -159,80 +400,56 @@ function draw(){
   ctx.lineWidth = 1;
   ctx.fillStyle = '#9aa3af';
   ctx.font = '11px sans-serif';
-  [-1,-0.5,0,0.5,1].forEach(t => {
-    const yPix = margin.top + plotH * (1 - (t + 1) / 2);
+
+  const axisRange = computeAxisRange();
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    const yPix = margin.top + plotH * (1 - f);
+    const value = axisRange.min + f * (axisRange.max - axisRange.min);
     ctx.beginPath();
     ctx.moveTo(margin.left, yPix);
     ctx.lineTo(margin.left + plotW, yPix);
     ctx.stroke();
-    ctx.fillText(t.toFixed(1), 4, yPix + 3);
+    ctx.fillText(axisRange.mode === 'norm' ? value.toFixed(1) : value.toFixed(0), 4, yPix + 3);
   });
 
-  const startIdx = Math.max(0, viewStart);
-  const endIdx = Math.min(n - 1, viewEnd);
-  const span = Math.max(1, endIdx - startIdx);
+  ctx.fillText(viewStart.toFixed(2) + 's', margin.left, cssHeight - 8);
+  ctx.fillText(viewEnd.toFixed(2) + 's', margin.left + plotW - 40, cssHeight - 8);
 
-  ctx.fillText(time[startIdx].toFixed(2) + 's', margin.left, cssHeight - 8);
-  ctx.fillText(time[endIdx].toFixed(2) + 's', margin.left + plotW - 40, cssHeight - 8);
-
-  function plotSeries(dataArr, color){
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    const step = Math.max(1, Math.floor(span / plotW));
-    let first = true;
-    for (let i = startIdx; i <= endIdx; i += step){
-      const px = margin.left + ((i - startIdx) / span) * plotW;
-      const py = margin.top + plotH * (1 - (dataArr[i] + 1) / 2);
-      if (first){ ctx.moveTo(px, py); first = false; }
-      else ctx.lineTo(px, py);
-    }
-    ctx.stroke();
-  }
-
-  const styles = getComputedStyle(document.documentElement);
-  if (visible.x) plotSeries(xN.data, styles.getPropertyValue('--x-color').trim());
-  if (visible.y) plotSeries(yN.data, styles.getPropertyValue('--y-color').trim());
-  if (visible.z) plotSeries(zN.data, styles.getPropertyValue('--z-color').trim());
+  datasets.forEach(ds => {
+    ds.columns.forEach(col => { if (col.visible) plotSeries(ds, col, axisRange); });
+  });
 }
 
-zoomSlider.addEventListener('input', () => { updatePanRange(); draw(); });
-panSlider.addEventListener('input', () => {
-  const windowSize = viewEnd - viewStart;
-  viewStart = parseInt(panSlider.value);
-  viewEnd = viewStart + windowSize;
-  draw();
-});
-document.getElementById('reset').addEventListener('click', () => {
-  zoomSlider.value = 100; panSlider.value = 0; updatePanRange(); draw();
-});
-document.querySelectorAll('.legend-item').forEach(el => {
-  el.addEventListener('click', () => {
-    const s = el.dataset.series;
-    visible[s] = !visible[s];
-    el.classList.toggle('off', !visible[s]);
-    draw();
-  });
-});
-canvas.addEventListener('mousemove', (e) => {
+/* ---------- tooltip ---------- */
+
+function onCanvasHover(e){
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
-  if (mx < margin.left || mx > margin.left + plotW){ tooltip.style.display = 'none'; return; }
-  const startIdx = Math.max(0, viewStart);
-  const endIdx = Math.min(n - 1, viewEnd);
-  const span = Math.max(1, endIdx - startIdx);
-  const idx = startIdx + Math.round(((mx - margin.left) / plotW) * span);
-  if (idx < 0 || idx >= n){ tooltip.style.display = 'none'; return; }
+  if (mx < margin.left || mx > margin.left + plotW || datasets.length === 0){
+    tooltip.style.display = 'none';
+    return;
+  }
+  const t = viewStart + ((mx - margin.left) / plotW) * (viewEnd - viewStart);
+
+  let html = 't=' + t.toFixed(3) + 's<br>';
+  datasets.forEach(ds => {
+    const idx = Math.min(lowerBound(ds.time, t), ds.time.length - 1);
+    if (idx < 0) return;
+    html += '<b>' + ds.filename + '</b><br>';
+    ds.columns.forEach(col => {
+      if (ds.rawMode){
+        html += '&nbsp;&nbsp;' + col.name + ': ' + col.raw[idx] + ' (norm ' + col.norm.data[idx].toFixed(3) + ')<br>';
+      } else {
+        html += '&nbsp;&nbsp;' + col.name + ': ' + col.norm.data[idx].toFixed(3) + ' (raw ' + col.raw[idx] + ')<br>';
+      }
+    });
+  });
+
   tooltip.style.display = 'block';
   tooltip.style.left = (e.clientX + 12) + 'px';
   tooltip.style.top = (e.clientY + 12) + 'px';
-  tooltip.innerHTML =
-    't=' + time[idx].toFixed(3) + 's<br>' +
-    'X: ' + xN.data[idx].toFixed(3) + ' (raw ' + x[idx] + ')<br>' +
-    'Y: ' + yN.data[idx].toFixed(3) + ' (raw ' + y[idx] + ')<br>' +
-    'Z: ' + zN.data[idx].toFixed(3) + ' (raw ' + z[idx] + ')';
-});
-canvas.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+  tooltip.innerHTML = html;
+}
 </script>
 
 </body>
