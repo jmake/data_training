@@ -131,7 +131,8 @@ function buildDataset(filename, parsed, datasetIndex){
     time: parsed.time,
     columns,
     dash: DASHES[datasetIndex % DASHES.length],
-    rawMode: false // false = plot normalized [-1,1], true = plot original [min,max]
+    rawMode: false, // false = plot normalized [-1,1], true = plot original [min,max]
+    hidden: false   // true = dataset excluded from the plot
   };
 }
 
@@ -254,6 +255,16 @@ function buildLegendGroups(){
     const title = document.createElement('div');
     title.className = 'legend-group-title';
     title.innerHTML = '<span>' + ds.filename + '</span>';
+    const hideBtn = document.createElement('button');
+    hideBtn.className = 'rm-btn';
+    hideBtn.textContent = ds.hidden ? 'show' : 'hide';
+    hideBtn.addEventListener('click', () => {
+      ds.hidden = !ds.hidden;
+      buildLegendGroups();
+      draw();
+    });
+    title.appendChild(hideBtn);
+
     const rescaleBtn = document.createElement('button');
     rescaleBtn.className = 'rm-btn';
     rescaleBtn.textContent = ds.rawMode ? 'rescale: [min,max]' : 'rescale: [-1,1]';
@@ -351,7 +362,7 @@ function computeAxisRange(){
   let min = Infinity, max = -Infinity;
   let anyRaw = false;
   datasets.forEach(ds => {
-    if (!ds.rawMode) return;
+    if (!ds.rawMode || ds.hidden) return;
     ds.columns.forEach(col => {
       if (!col.visible) return;
       anyRaw = true;
@@ -416,6 +427,7 @@ function draw(){
   ctx.fillText(viewEnd.toFixed(2) + 's', margin.left + plotW - 40, cssHeight - 8);
 
   datasets.forEach(ds => {
+    if (ds.hidden) return;
     ds.columns.forEach(col => { if (col.visible) plotSeries(ds, col, axisRange); });
   });
 }
@@ -433,6 +445,7 @@ function onCanvasHover(e){
 
   let html = 't=' + t.toFixed(3) + 's<br>';
   datasets.forEach(ds => {
+    if (ds.hidden) return;
     const idx = Math.min(lowerBound(ds.time, t), ds.time.length - 1);
     if (idx < 0) return;
     html += '<b>' + ds.filename + '</b><br>';
