@@ -65,7 +65,6 @@
 <script>
 /* ---------- reusable, pure/data functions ---------- */
 
-const PALETTE = ['#ff6b6b','#4ecdc4','#ffd93d','#6a8dff','#c77dff','#7bdb6c','#ff9f6b','#f06bd0','#6bffe0','#d0d06b'];
 const DASHES  = [[], [6,4], [2,2], [8,3,2,3]]; // one dash pattern per file
 
 function readFileAsText(file){
@@ -116,22 +115,100 @@ function normalizeArray(arr){
   return { data: out, min, max };
 }
 
+// Linear-interpolated percentile (q in [0,1]) over a sorted ascending array
+function quantile(sortedArr, q){
+  const pos = (sortedArr.length - 1) * q;
+  const lo = Math.floor(pos), hi = Math.ceil(pos);
+  if (lo === hi) return sortedArr[lo];
+  return sortedArr[lo] + (sortedArr[hi] - sortedArr[lo]) * (pos - lo);
+}
+
+// RobustScaler: (x - median) / IQR, IQR = Q3 - Q1
+// Visibility bounds use the 2.5-97.5 percentile range instead of Q1-Q3.
+function robustScaleArray(arr){
+  const sorted = [...arr].sort((a, b) => a - b);
+  const median = quantile(sorted, 0.5);
+  const q1 = quantile(sorted, 0.25);
+  const q3 = quantile(sorted, 0.75);
+  const iqr = (q3 - q1) || 1;
+  const p1 = quantile(sorted, 0.01);
+  const p99 = quantile(sorted, 0.99);
+  const data = new Array(arr.length);
+  for (let i = 0; i < arr.length; i++) data[i] = (arr[i] - median) / iqr;
+  return {
+    data, median, q1, q3, iqr,
+    lo: (p1 - median) / iqr,
+    hi: (p99 - median) / iqr
+  };
+}
+
+// StandardScaler: (x - mean) / std. Visibility bounds fixed at [-3, 3] std deviations.
+function standardScaleArray(arr){
+  const n = arr.length;
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += arr[i];
+  mean /= n;
+  let variance = 0;
+  for (let i = 0; i < n; i++) variance += (arr[i] - mean) * (arr[i] - mean);
+  variance /= n;
+  const std = Math.sqrt(variance) || 1;
+  const data = new Array(n);
+  for (let i = 0; i < n; i++) data[i] = (arr[i] - mean) / std;
+  return { data, mean, std, lo: -3, hi: 3 };
+}
+
 // Build a dataset object (one per loaded file) from parsed CSV data
+// Generates a visually distinct random color (fixed saturation/lightness for readability on dark bg)
+function randomColor(){
+  const hue = Math.floor(Math.random() * 360);
+  return 'hsl(' + hue + ', 75%, 60%)';
+}
+
+// module_i = sqrt(col_1_i^2 + col_2_i^2 + ... + col_N_i^2)
+function computeModule(rawCols){
+  const n = rawCols[0].length;
+  const out = new Array(n);
+  for (let i = 0; i < n; i++){
+    let sumSq = 0;
+    for (let c = 0; c < rawCols.length; c++) sumSq += rawCols[c][i] * rawCols[c][i];
+    out[i] = Math.sqrt(sumSq);
+  }
+  return out;
+}
+
 function buildDataset(filename, parsed, datasetIndex){
+  const hasModule = parsed.columns.length >= 3;
   const columns = parsed.columns.map((raw, i) => ({
     name: 'col_' + (i + 1),
     raw,
     norm: normalizeArray(raw),
-    color: PALETTE[i % PALETTE.length],
-    visible: true
+    robust: robustScaleArray(raw),
+    standard: standardScaleArray(raw),
+    color: randomColor(),
+    visible: !hasModule // when a module column exists, individual columns start hidden
   }));
+
+  // Prepend a "module" column when there are at least 3 data columns
+  if (hasModule){
+    const moduleRaw = computeModule(parsed.columns);
+    columns.unshift({
+      name: 'module',
+      raw: moduleRaw,
+      norm: normalizeArray(moduleRaw),
+      robust: robustScaleArray(moduleRaw),
+      standard: standardScaleArray(moduleRaw),
+      color: randomColor(),
+      visible: true
+    });
+  }
+
   return {
     id: 'ds_' + datasetIndex + '_' + Date.now(),
     filename,
     time: parsed.time,
     columns,
     dash: DASHES[datasetIndex % DASHES.length],
-    rawMode: false, // false = plot normalized [-1,1], true = plot original [min,max]
+    scaleMode: 'standard', // 'norm' Unity | 'raw' Raw | 'robust' Robust | 'standard' Standard
     hidden: false   // true = dataset excluded from the plot
   };
 }
@@ -265,11 +342,14 @@ function buildLegendGroups(){
     });
     title.appendChild(hideBtn);
 
+    const SCALE_LABELS = { norm: 'rescale: Unity', raw: 'rescale: Raw', robust: 'rescale: Robust', standard: 'rescale: Standard' };
+    const SCALE_ORDER = ['standard', 'robust', 'raw', 'norm'];
     const rescaleBtn = document.createElement('button');
     rescaleBtn.className = 'rm-btn';
-    rescaleBtn.textContent = ds.rawMode ? 'rescale: [min,max]' : 'rescale: [-1,1]';
+    rescaleBtn.textContent = SCALE_LABELS[ds.scaleMode];
     rescaleBtn.addEventListener('click', () => {
-      ds.rawMode = !ds.rawMode;
+      const nextIdx = (SCALE_ORDER.indexOf(ds.scaleMode) + 1) % SCALE_ORDER.length;
+      ds.scaleMode = SCALE_ORDER[nextIdx];
       buildLegendGroups();
       draw();
     });
@@ -289,8 +369,11 @@ function buildLegendGroups(){
     items.className = 'legend-items';
     ds.columns.forEach(col => {
       const item = document.createElement('div');
-      item.className = 'legend-item';
-      const rangeTxt = ds.rawMode ? ' [' + col.norm.min + ', ' + col.norm.max + ']' : ' [-1, 1]';
+      item.className = 'legend-item' + (col.visible ? '' : ' off');
+      let rangeTxt = ' [-1, 1]';
+      if (ds.scaleMode === 'raw') rangeTxt = ' [' + col.norm.min.toFixed(2) + ', ' + col.norm.max.toFixed(2) + ']';
+      else if (ds.scaleMode === 'robust') rangeTxt = ' [' + col.robust.lo.toFixed(2) + ', ' + col.robust.hi.toFixed(2) + ']';
+      else if (ds.scaleMode === 'standard') rangeTxt = ' [-3, 3]';
       item.innerHTML = '<span class="swatch" style="background:' + col.color + '"></span>' + col.name + rangeTxt;
       item.addEventListener('click', () => {
         col.visible = !col.visible;
@@ -357,27 +440,71 @@ function syncScrollSliderToView(){
 /* ---------- drawing ---------- */
 
 // Computes the single active Y-axis range: [-1,1] normalized by default,
-// or the real combined [min,max] across all visible raw-mode columns.
+// or the real combined [min,max] / RobustScaler / StandardScaler range across active columns.
+// Priority when mixed: raw > robust > standard > norm (only one shared axis can be shown).
 function computeAxisRange(){
-  let min = Infinity, max = -Infinity;
-  let anyRaw = false;
+  let rawMin = Infinity, rawMax = -Infinity, anyRaw = false;
+  let robMin = Infinity, robMax = -Infinity, anyRobust = false;
+  let stdMin = Infinity, stdMax = -Infinity, anyStandard = false;
+
   datasets.forEach(ds => {
-    if (!ds.rawMode || ds.hidden) return;
-    ds.columns.forEach(col => {
-      if (!col.visible) return;
-      anyRaw = true;
-      if (col.norm.min < min) min = col.norm.min;
-      if (col.norm.max > max) max = col.norm.max;
-    });
+    if (ds.hidden) return;
+
+    if (ds.scaleMode === 'raw'){
+      ds.columns.forEach(col => {
+        if (!col.visible) return;
+        anyRaw = true;
+        if (col.norm.min < rawMin) rawMin = col.norm.min;
+        if (col.norm.max > rawMax) rawMax = col.norm.max;
+      });
+    } else if (ds.scaleMode === 'robust'){
+      // Shared bound for the whole dataset: the module column's P1-P99
+      // when present, so every curve is masked by vector magnitude, not its own range.
+      const moduleCol = ds.columns.find(c => c.name === 'module');
+      const hasVisible = ds.columns.some(c => c.visible);
+      if (hasVisible){
+        anyRobust = true;
+        if (moduleCol){
+          if (moduleCol.robust.lo < robMin) robMin = moduleCol.robust.lo;
+          if (moduleCol.robust.hi > robMax) robMax = moduleCol.robust.hi;
+        } else {
+          ds.columns.forEach(col => {
+            if (!col.visible) return;
+            if (col.robust.lo < robMin) robMin = col.robust.lo;
+            if (col.robust.hi > robMax) robMax = col.robust.hi;
+          });
+        }
+      }
+    } else if (ds.scaleMode === 'standard'){
+      // Same pattern as RobustScaler: shared bound from the module column when present.
+      const moduleCol = ds.columns.find(c => c.name === 'module');
+      const hasVisible = ds.columns.some(c => c.visible);
+      if (hasVisible){
+        anyStandard = true;
+        const ref = moduleCol || null;
+        if (ref){
+          if (ref.standard.lo < stdMin) stdMin = ref.standard.lo;
+          if (ref.standard.hi > stdMax) stdMax = ref.standard.hi;
+        } else {
+          if (-3 < stdMin) stdMin = -3;
+          if (3 > stdMax) stdMax = 3;
+        }
+      }
+    }
   });
-  if (!anyRaw) return { mode: 'norm', min: -1, max: 1 };
-  return { mode: 'raw', min, max };
+
+  if (anyRaw) return { mode: 'raw', min: rawMin, max: rawMax };
+  if (anyRobust) return { mode: 'robust', min: robMin, max: robMax };
+  if (anyStandard) return { mode: 'standard', min: stdMin, max: stdMax };
+  return { mode: 'norm', min: -1, max: 1 };
 }
 
 // Maps a data point to its normalized [0,1] vertical fraction under the
-// currently active axis range (so raw-mode and normalized series share one axis).
+// currently active axis range (so all scale modes share one axis).
 function toAxisFraction(col, i, axisRange){
   if (axisRange.mode === 'norm') return (col.norm.data[i] + 1) / 2;
+  if (axisRange.mode === 'robust') return (col.robust.data[i] - axisRange.min) / (axisRange.max - axisRange.min);
+  if (axisRange.mode === 'standard') return (col.standard.data[i] - axisRange.min) / (axisRange.max - axisRange.min);
   const raw = col.raw[i];
   return (raw - axisRange.min) / (axisRange.max - axisRange.min);
 }
@@ -387,6 +514,11 @@ function plotSeries(ds, col, axisRange){
   let endIdx = lowerBound(ds.time, viewEnd);
   endIdx = Math.min(endIdx, ds.time.length - 1);
   if (endIdx <= startIdx) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(margin.left, margin.top, plotW, plotH);
+  ctx.clip(); // clamp out-of-range values at the plot edges instead of hiding points
 
   ctx.setLineDash(ds.dash);
   ctx.strokeStyle = col.color;
@@ -403,6 +535,7 @@ function plotSeries(ds, col, axisRange){
   }
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.restore();
 }
 
 function draw(){
@@ -420,7 +553,7 @@ function draw(){
     ctx.moveTo(margin.left, yPix);
     ctx.lineTo(margin.left + plotW, yPix);
     ctx.stroke();
-    ctx.fillText(axisRange.mode === 'norm' ? value.toFixed(1) : value.toFixed(0), 4, yPix + 3);
+    ctx.fillText(axisRange.mode === 'raw' ? value.toFixed(0) : value.toFixed(2), 4, yPix + 3);
   });
 
   ctx.fillText(viewStart.toFixed(2) + 's', margin.left, cssHeight - 8);
@@ -450,8 +583,16 @@ function onCanvasHover(e){
     if (idx < 0) return;
     html += '<b>' + ds.filename + '</b><br>';
     ds.columns.forEach(col => {
-      if (ds.rawMode){
+      if (ds.scaleMode === 'raw'){
         html += '&nbsp;&nbsp;' + col.name + ': ' + col.raw[idx] + ' (norm ' + col.norm.data[idx].toFixed(3) + ')<br>';
+      } else if (ds.scaleMode === 'robust'){
+        const outOfRange = (col.robust.data[idx] < col.robust.lo || col.robust.data[idx] > col.robust.hi);
+        const inIqr = outOfRange ? ' (clipped, outside P1-P99)' : '';
+        html += '&nbsp;&nbsp;' + col.name + ': ' + col.robust.data[idx].toFixed(3) + ' (raw ' + col.raw[idx] + ')' + inIqr + '<br>';
+      } else if (ds.scaleMode === 'standard'){
+        const outOfRange = (col.standard.data[idx] < -3 || col.standard.data[idx] > 3);
+        const clipTxt = outOfRange ? ' (clipped, outside ±3σ)' : '';
+        html += '&nbsp;&nbsp;' + col.name + ': ' + col.standard.data[idx].toFixed(3) + ' (raw ' + col.raw[idx] + ')' + clipTxt + '<br>';
       } else {
         html += '&nbsp;&nbsp;' + col.name + ': ' + col.norm.data[idx].toFixed(3) + ' (raw ' + col.raw[idx] + ')<br>';
       }
