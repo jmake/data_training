@@ -120,8 +120,8 @@ jobs:
               <div class="card">
               <a href="$name">
               <div class="icon">📄</div>
-              <div class="name">Training Results</div>
-              <div class="info">$name</div>
+              <div class="name">$name</div>
+              <div class="info">Good Luck!</div>
               </a>
               </div>
           EOF
