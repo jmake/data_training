@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Concept2 Force Curve Pro Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f8f9fa; color: #333; }
+        .controls { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 20px; 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            align-items: center;
+        }
+        .chart-container { width: 95vw; height: 60vh; margin: auto; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .stats { background: #e9ecef; padding: 10px; border-radius: 5px; font-weight: bold; text-align: center; }
+        input[type="range"] { width: 100%; }
+        button { 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            font-weight: bold;
+        }
+        button:hover { background: #0056b3; }
+        button.active { background: #dc3545; }
+        
+        /* Bottom Input Styles */
+        .file-loader {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .file-loader input {
+            width: 400px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .url-preview {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <div>
+            <label for="strokeSlider">Select Stroke: </label>
+            <input type="range" id="strokeSlider" min="0" value="0">
+            <span id="strokeVal">Stroke 1</span>
+        </div>
+        <div>
+            <button id="playBtn">Play Animation</button>
+        </div>
+        <div>
+            <input type="checkbox" id="showAverage" checked> <label for="showAverage">Average</label>
+            <input type="checkbox" id="showAll" checked> <label for="showAll">Background</label>
+        </div>
+        <div class="stats" id="metrics">
+            Peak Force: 0 | Point: 0
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="forceChart"></canvas>
+    </div>
+
+    <div class="file-loader">
+        <label for="filenameInput"><strong>Data Filename:</strong></label><br>
+        <input type="text" id="filenameInput" value="Concept2ForceCurve_1785140403195.txt" placeholder="Enter filename and press Enter">
+        <p class="url-preview">Base path: <code>https://raw.githubusercontent.com/jmake/data_training/main/Data/</code></p>
+    </div>
+
+    <script>
+        const baseUrl = "https://raw.githubusercontent.com/jmake/data_training/main/Data/";
+        let chart, allStrokes = [], averageData = [];
+        let animationInterval = null;
+
+        async function loadData(filename) {
+            try {
+                const response = await fetch(baseUrl + filename);
+                if (!response.ok) throw new Error("File not found");
+                
+                const text = await response.text();
+                const lines = text.trim().split(/\r?\n/);
+                
+                // Reset globals
+                allStrokes = [];
+                averageData = [];
+                let maxLen = 0;
+
+                allStrokes = lines.map(line => {
+                    const vals = (line.match(/[-+]?\d*\.?\d+/g) || []).map(Number);
+                    if (vals.length > maxLen) maxLen = vals.length;
+                    return vals;
+                }).filter(s => s.length > 0);
+
+                for (let i = 0; i < maxLen; i++) {
+                    let sum = 0, count = 0;
+                    allStrokes.forEach(stroke => {
+                        if (stroke[i] !== undefined) { sum += stroke[i]; count++; }
+                    });
+                    averageData.push(sum / count);
+                }
+
+                document.getElementById('strokeSlider').max = allStrokes.length - 1;
+                document.getElementById('strokeSlider').value = 0;
+                
+                renderChart(maxLen);
+            } catch (err) { 
+                alert("Error loading file: " + err.message);
+                console.error(err); 
+            }
+        }
+
+        function renderChart(maxLen) {
+            const ctx = document.getElementById('forceChart').getContext('2d');
+            
+            // Destroy previous instance if exists
+            if (chart) chart.destroy();
+
+            const bgDatasets = allStrokes.map((s, i) => ({
+                data: s, borderColor: 'rgba(200, 200, 200, 0.2)', borderWidth: 1, pointRadius: 0, fill: false, tension: 0.4, order: 3, hidden: !document.getElementById('showAll').checked
+            }));
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: maxLen }, (_, i) => i),
+                    datasets: [...bgDatasets, 
+                        { label: 'Average', data: averageData, borderColor: '#ff4d4d', borderWidth: 4, pointRadius: 0, fill: false, tension: 0.4, order: 1, hidden: !document.getElementById('showAverage').checked },
+                        { label: 'Current', data: [], borderColor: '#007bff', borderWidth: 5, pointRadius: 3, fill: false, tension: 0.4, order: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } },
+                    animation: { duration: 150 }
+                }
+            });
+            updateFrame();
+        }
+
+        function updateFrame() {
+            if (!chart || allStrokes.length === 0) return;
+            const idx = parseInt(document.getElementById('strokeSlider').value);
+            const strokeData = allStrokes[idx];
+            
+            document.getElementById('strokeVal').innerText = `Stroke ${idx + 1}`;
+            chart.data.datasets[chart.data.datasets.length - 1].data = strokeData;
+
+            const peak = Math.max(...strokeData);
+            const peakIdx = strokeData.indexOf(peak);
+            document.getElementById('metrics').innerText = `Peak Force: ${peak.toFixed(1)} | Point: ${peakIdx}`;
+
+            chart.update('none');
+        }
+
+        function setupEvents() {
+            const slider = document.getElementById('strokeSlider');
+            const playBtn = document.getElementById('playBtn');
+            const filenameInput = document.getElementById('filenameInput');
+
+            slider.addEventListener('input', () => {
+                stopAnimation();
+                updateFrame();
+            });
+
+            document.getElementById('showAverage').addEventListener('change', (e) => {
+                if (chart) {
+                    chart.data.datasets[chart.data.datasets.length - 2].hidden = !e.target.checked;
+                    chart.update();
+                }
+            });
+
+            document.getElementById('showAll').addEventListener('change', (e) => {
+                if (chart) {
+                    for (let i = 0; i < allStrokes.length; i++) chart.data.datasets[i].hidden = !e.target.checked;
+                    chart.update();
+                }
+            });
+
+            playBtn.addEventListener('click', () => {
+                if (animationInterval) stopAnimation();
+                else startAnimation();
+            });
+
+            // Trigger update on Enter
+            filenameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    stopAnimation();
+                    loadData(filenameInput.value);
+                }
+            });
+        }
+
+        function startAnimation() {
+            const playBtn = document.getElementById('playBtn');
+            const slider = document.getElementById('strokeSlider');
+            playBtn.innerText = "Stop Animation";
+            playBtn.classList.add('active');
+            
+            animationInterval = setInterval(() => {
+                let next = parseInt(slider.value) + 1;
+                if (next >= allStrokes.length) next = 0;
+                slider.value = next;
+                updateFrame();
+            }, 200);
+        }
+
+        function stopAnimation() {
+            if (!animationInterval) return;
+            clearInterval(animationInterval);
+            animationInterval = null;
+            const playBtn = document.getElementById('playBtn');
+            playBtn.innerText = "Play Animation";
+            playBtn.classList.remove('active');
+        }
+
+        // Initial Load
+        setupEvents();
+        loadData(document.getElementById('filenameInput').value);
+    </script>
+</body>
+</html>
