@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>HTML Files</title>
+</head>
+<body>
+
+<h1>HTML Files</h1>
+<ul>
+<?php
+foreach (glob("*.html") as $file) {
+    if ($file !== "index.html")
+        echo "<li><a href=\"$file\">$file</a></li>";
+}
+?>
+</ul>
+
+</body>
+</html>
