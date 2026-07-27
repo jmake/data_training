@@ -101,6 +101,14 @@ jobs:
             color: #aaaaaa;
             margin-top: 8px;
           }
+
+          .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: #777;
+            font-size: 14px;
+          }          
           </style>
           </head>
 
@@ -130,6 +138,10 @@ jobs:
 
           cat >> docs/index.html <<'EOF'
 
+          </div>
+
+          <div class="footer">
+          By SpicyTech
           </div>
 
           </body>
