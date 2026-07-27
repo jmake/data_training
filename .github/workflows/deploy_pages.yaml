@@ -7,6 +7,17 @@ on:
     paths:
       - "docs/**"
 
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        required: true
+        default: "main"
+      path:
+        description: "Directory to deploy"
+        required: true
+        default: "docs"
+
 permissions:
   contents: read
   pages: write
@@ -14,10 +25,16 @@ permissions:
 
 jobs:
   deploy:
+    if: github.event_name == 'push' || (
+        github.event.inputs.branch == 'main' &&
+        github.event.inputs.path == 'docs'
+        )
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Generate HTML index
         run: |
