@@ -1,0 +1,145 @@
+name: deploy_pages_2 
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        required: true
+        default: "main"
+      path:
+        description: "Directory to deploy"
+        required: true
+        default: "docs"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || (
+        github.event.inputs.branch == 'main' &&
+        github.event.inputs.path == 'docs'
+        )
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Generate HTML index
+        run: |
+          cat > docs/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <meta charset="UTF-8">
+          <title>Data Training</title>
+
+          <style>
+          body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #0b0b0b;
+            color: #ffffff;
+          }
+
+          h1 {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+          }
+
+          .card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 3px 10px #0008;
+            border: 1px solid #333;
+            transition: 0.2s;
+          }
+
+          .card:hover {
+            background: #252525;
+          }
+
+          .card a {
+            color: inherit;
+            text-decoration: none;
+            display: block;
+          }
+
+          .icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+          }
+
+          .name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+          }
+
+          .info {
+            color: #aaaaaa;
+            margin-top: 8px;
+          }
+          </style>
+          </head>
+
+          <body>
+
+          <h1>Data Training</h1>
+
+          <div class="grid">
+
+          EOF
+
+          for f in docs/*.html; do
+            name=$(basename "$f")
+
+            if [ "$name" != "index.html" ]; then
+              cat >> docs/index.html <<EOF
+              <div class="card">
+              <a href="$name">
+              <div class="icon">📄</div>
+              <div class="name">Training Results</div>
+              <div class="info">$name</div>
+              </a>
+              </div>
+          EOF
+            fi
+          done
+
+          cat >> docs/index.html <<'EOF'
+
+          </div>
+
+          </body>
+          </html>
+          EOF
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - uses: actions/deploy-pages@v4
