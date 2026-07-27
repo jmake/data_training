@@ -1,0 +1,56 @@
+name: deploy pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate HTML index
+        run: |
+          cat > docs/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <meta charset="UTF-8">
+          <title>HTML Files</title>
+          </head>
+          <body>
+          <h1>HTML Files</h1>
+          <ul>
+          EOF
+
+          for f in docs/*.html; do
+            name=$(basename "$f")
+            if [ "$name" != "index.html" ]; then
+              echo "<li><a href=\"$name\">$name</a></li>" \
+              >> docs/index.html
+            fi
+          done
+
+          cat >> docs/index.html <<'EOF'
+          </ul>
+          </body>
+          </html>
+          EOF
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - uses: actions/deploy-pages@v4
