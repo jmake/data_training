@@ -313,7 +313,7 @@ function renderStats(name, st) {
      </div>`;
 
   document.getElementById(`acc-stats-${name}`).innerHTML = [
-    card("ACC RMS",     st.acc_rms,                    "mg"),
+    card("ACC RMS",     st.acc_rms,                    "g"),
     card("Sample Rate", st.sample_rate,                 "Hz"),
     card("ACC Points",  st.acc_samples.toLocaleString(), ""),
   ].join("");
