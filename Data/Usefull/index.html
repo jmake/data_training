@@ -91,6 +91,9 @@
     .stat-value { font-size: 1.1rem; font-weight: 700; }
     .stat-unit  { font-size: .65rem; color: var(--muted); margin-left: 2px; }
 
+    .stats-inline {
+      display: flex; gap: 10px; flex-wrap: wrap; padding-bottom: 12px;
+    }
     /* ── CONTENT ── */
     .tab-content { display: none; padding: 16px 20px; }
     .tab-content.active { display: block; }
@@ -101,6 +104,22 @@
     .charts-axes {
       display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
     }
+
+    /* ── SECTION HEADERS ── */
+    .section {
+      margin-bottom: 12px;
+    }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 4px 8px;
+      font-size: .7rem; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .section-header::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .section-header.sh-acc { color: var(--mag-color); }
+    .section-header.sh-hr  { color: var(--hr-color);  }
 
     .chart-card {
       background: var(--card); border: 1px solid var(--border);
@@ -165,58 +184,76 @@
 
 <!-- ══════════════ ROWING ══════════════ -->
 <div id="tab-rowing" class="tab-content active">
-  <div class="stats-row" id="stats-rowing"></div>
-  <div class="charts-top">
-    <div class="chart-card">
-      <span class="chart-title ct-hr">Heart Rate</span>
-      <div id="r-hr"  class="plot-box"></div>
-    </div>
-    <div class="chart-card">
+
+  <!-- ACC section -->
+  <div class="section" style="padding: 0 16px;">
+    <div class="section-header sh-acc">Accelerometer</div>
+    <div class="stats-inline" id="acc-stats-rowing"></div>
+    <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title ct-mag">ACC Magnitude</span>
       <div id="r-mag" class="plot-box"></div>
     </div>
+    <div class="charts-axes">
+      <div class="chart-card">
+        <span class="chart-title ct-ax">ACC X</span>
+        <div id="r-ax" class="plot-box small"></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-title ct-ay">ACC Y</span>
+        <div id="r-ay" class="plot-box small"></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-title ct-az">ACC Z</span>
+        <div id="r-az" class="plot-box small"></div>
+      </div>
+    </div>
   </div>
-  <div class="charts-axes">
+
+  <!-- HR section -->
+  <div class="section" style="padding: 12px 16px 16px;">
+    <div class="section-header sh-hr">Heart Rate</div>
+    <div class="stats-inline" id="hr-stats-rowing"></div>
     <div class="chart-card">
-      <span class="chart-title ct-ax">ACC X</span>
-      <div id="r-ax" class="plot-box small"></div>
-    </div>
-    <div class="chart-card">
-      <span class="chart-title ct-ay">ACC Y</span>
-      <div id="r-ay" class="plot-box small"></div>
-    </div>
-    <div class="chart-card">
-      <span class="chart-title ct-az">ACC Z</span>
-      <div id="r-az" class="plot-box small"></div>
+      <span class="chart-title ct-hr">Heart Rate</span>
+      <div id="r-hr" class="plot-box"></div>
     </div>
   </div>
 </div>
 
 <!-- ══════════════ RUNNING ══════════════ -->
 <div id="tab-running" class="tab-content">
-  <div class="stats-row" id="stats-running"></div>
-  <div class="charts-top">
-    <div class="chart-card">
-      <span class="chart-title ct-hr">Heart Rate</span>
-      <div id="n-hr"  class="plot-box"></div>
-    </div>
-    <div class="chart-card">
+
+  <!-- ACC section -->
+  <div class="section" style="padding: 0 16px;">
+    <div class="section-header sh-acc">Accelerometer</div>
+    <div class="stats-inline" id="acc-stats-running"></div>
+    <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title ct-mag">ACC Magnitude</span>
       <div id="n-mag" class="plot-box"></div>
     </div>
+    <div class="charts-axes">
+      <div class="chart-card">
+        <span class="chart-title ct-ax">ACC X</span>
+        <div id="n-ax" class="plot-box small"></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-title ct-ay">ACC Y</span>
+        <div id="n-ay" class="plot-box small"></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-title ct-az">ACC Z</span>
+        <div id="n-az" class="plot-box small"></div>
+      </div>
+    </div>
   </div>
-  <div class="charts-axes">
+
+  <!-- HR section -->
+  <div class="section" style="padding: 12px 16px 16px;">
+    <div class="section-header sh-hr">Heart Rate</div>
+    <div class="stats-inline" id="hr-stats-running"></div>
     <div class="chart-card">
-      <span class="chart-title ct-ax">ACC X</span>
-      <div id="n-ax" class="plot-box small"></div>
-    </div>
-    <div class="chart-card">
-      <span class="chart-title ct-ay">ACC Y</span>
-      <div id="n-ay" class="plot-box small"></div>
-    </div>
-    <div class="chart-card">
-      <span class="chart-title ct-az">ACC Z</span>
-      <div id="n-az" class="plot-box small"></div>
+      <span class="chart-title ct-hr">Heart Rate</span>
+      <div id="n-hr" class="plot-box"></div>
     </div>
   </div>
 </div>
@@ -269,21 +306,24 @@ function fmt_duration(s) {
 
 function renderStats(name, st) {
   const accent = SESSIONS[name].accent;
-  const items = [
-    { label: "Duration",    value: fmt_duration(st.duration_s), unit: "min" },
-    { label: "Avg HR",      value: st.hr_avg,   unit: "bpm" },
-    { label: "Max HR",      value: st.hr_max,   unit: "bpm" },
-    { label: "Min HR",      value: st.hr_min,   unit: "bpm" },
-    { label: "ACC RMS",     value: st.acc_rms,  unit: "mg" },
-    { label: "Sample Rate", value: st.sample_rate, unit: "Hz" },
-    { label: "ACC Points",  value: st.acc_samples.toLocaleString(), unit: "" },
-  ];
-  document.getElementById(`stats-${name}`).innerHTML = items.map(i =>
+  const card = (label, value, unit) =>
     `<div class="stat-card ${accent}">
-       <div class="stat-label">${i.label}</div>
-       <div class="stat-value">${i.value}<span class="stat-unit">${i.unit}</span></div>
-     </div>`
-  ).join("");
+       <div class="stat-label">${label}</div>
+       <div class="stat-value">${value}<span class="stat-unit">${unit}</span></div>
+     </div>`;
+
+  document.getElementById(`acc-stats-${name}`).innerHTML = [
+    card("ACC RMS",     st.acc_rms,                    "mg"),
+    card("Sample Rate", st.sample_rate,                 "Hz"),
+    card("ACC Points",  st.acc_samples.toLocaleString(), ""),
+  ].join("");
+
+  document.getElementById(`hr-stats-${name}`).innerHTML = [
+    card("Duration", fmt_duration(st.duration_s), "min"),
+    card("Avg HR",   st.hr_avg,                   "bpm"),
+    card("Max HR",   st.hr_max,                   "bpm"),
+    card("Min HR",   st.hr_min,                   "bpm"),
+  ].join("");
 }
 
 // ── Render charts ──
