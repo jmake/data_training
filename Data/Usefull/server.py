@@ -1,3 +1,18 @@
+import sys
+import subprocess
+import importlib.util
+
+def ensure_package(import_name, pip_name=None):
+    if importlib.util.find_spec(import_name) is None:
+        subprocess.check_call([
+            sys.executable, "-m", "pip", "install", pip_name or import_name
+        ])
+
+ensure_package("numpy") 
+ensure_package("pandas") 
+ensure_package("sklearn", "scikit-learn") 
+
+
 import os
 import json
 import math
