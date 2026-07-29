@@ -1,6 +1,7 @@
 import os
 import json
 import math
+from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -14,6 +15,12 @@ SESSIONS = {
         "acc": "polar_sense_065afd32_1785223632096_acc.txt",
         "hr":  "polar_sense_065afd32_1785223632096_hr.txt",
     }
+}
+
+STATIC_MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".css":  "text/css",
+    ".js":   "application/javascript",
 }
 
 _cache = {}
@@ -55,6 +62,43 @@ def read_acc(path):
     return {"t": t, "x": x, "y": y, "z": z, "mag": mag}
 
 
+# ── Cleaning methods ──────────────────────────────────────────────────────────
+
+def apply_iqr_clip(acc, n=3.0):
+    """Clip spike samples where magnitude exceeds Q3 + n*IQR.
+    X/Y/Z are scaled proportionally so magnitude stays consistent."""
+    mag = acc["mag"]
+    s   = sorted(mag)
+    q1  = s[max(0, int(len(s) * 0.25))]
+    q3  = s[min(len(s) - 1, int(len(s) * 0.75))]
+    fence = q3 + n * (q3 - q1)
+
+    cx, cy, cz, cm = [], [], [], []
+    for xi, yi, zi, m in zip(acc["x"], acc["y"], acc["z"], mag):
+        if m > fence and m > 0:
+            scale = fence / m
+            cx.append(xi * scale)
+            cy.append(yi * scale)
+            cz.append(zi * scale)
+            cm.append(fence)
+        else:
+            cx.append(xi)
+            cy.append(yi)
+            cz.append(zi)
+            cm.append(m)
+
+    return {"t": acc["t"], "x": cx, "y": cy, "z": cz, "mag": cm}
+
+
+CLEANERS = {
+    "raw": lambda acc: acc,
+    "iqr": apply_iqr_clip,
+    # future entries: "median": apply_median_filter, "savgol": apply_savgol, ...
+}
+
+
+# ── HR / Stats ────────────────────────────────────────────────────────────────
+
 def read_hr(path):
     t, bpm = [], []
     with open(path, "r") as f:
@@ -83,52 +127,62 @@ def compute_stats(acc, hr):
         sr = round(1.0 / dt) if dt > 0 else 0
 
     return {
-        "duration_s":   round(acc["t"][-1], 2) if n > 0 else 0,
-        "acc_samples":  n,
-        "acc_rms":      round(acc_rms, 2),
-        "sample_rate":  sr,
-        "hr_avg":       round(sum(bpm) / len(bpm), 1) if bpm else 0,
-        "hr_max":       int(max(bpm)) if bpm else 0,
-        "hr_min":       int(min(bpm)) if bpm else 0,
+        "duration_s":  round(acc["t"][-1], 2) if n > 0 else 0,
+        "acc_samples": n,
+        "acc_rms":     round(acc_rms, 4),
+        "sample_rate": sr,
+        "hr_avg":      round(sum(bpm) / len(bpm), 1) if bpm else 0,
+        "hr_max":      int(max(bpm)) if bpm else 0,
+        "hr_min":      int(min(bpm)) if bpm else 0,
     }
 
 
-def load_session(name):
-    sess     = SESSIONS[name]
-    acc_path = os.path.join(BASE, sess["acc"])
-    hr_path  = os.path.join(BASE, sess["hr"])
+# ── Cache + load ──────────────────────────────────────────────────────────────
 
-    acc_mt = os.path.getmtime(acc_path)
-    hr_mt  = os.path.getmtime(hr_path)
-    etag   = f'"{hash((acc_mt, hr_mt))}"'
+def load_session(name, clean="raw"):
+    sess      = SESSIONS[name]
+    acc_path  = os.path.join(BASE, sess["acc"])
+    hr_path   = os.path.join(BASE, sess["hr"])
 
-    cached = _cache.get(name)
+    acc_mt    = os.path.getmtime(acc_path)
+    hr_mt     = os.path.getmtime(hr_path)
+    cache_key = f"{name}_{clean}"
+    etag      = f'"{hash((acc_mt, hr_mt, clean))}"'
+
+    cached = _cache.get(cache_key)
     if cached and cached["etag"] == etag:
         return cached["payload"], etag
 
-    acc     = read_acc(acc_path)
+    acc_raw = read_acc(acc_path)
+    acc     = CLEANERS.get(clean, CLEANERS["raw"])(acc_raw)
     hr      = read_hr(hr_path)
     payload = json.dumps({"acc": acc, "hr": hr, "stats": compute_stats(acc, hr)}).encode()
-    _cache[name] = {"etag": etag, "payload": payload}
-    print(f"[cache] {name} reloaded ({len(payload) // 1024} KB)")
+    _cache[cache_key] = {"etag": etag, "payload": payload}
+    print(f"[cache] {cache_key} reloaded ({len(payload) // 1024} KB)")
     return payload, etag
 
 
+# ── HTTP handler ──────────────────────────────────────────────────────────────
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path.startswith("/data/"):
-            name = self.path[6:]
-            if name not in SESSIONS:
-                self.send_response(404)
-                self.end_headers()
-                return
+        parsed = urlparse(self.path)
+        path   = parsed.path
+        params = parse_qs(parsed.query)
 
-            payload, etag = load_session(name)
+        if path.startswith("/data/"):
+            name = path[6:]
+            if name not in SESSIONS:
+                self.send_response(404); self.end_headers(); return
+
+            clean = params.get("clean", ["raw"])[0]
+            if clean not in CLEANERS:
+                clean = "raw"
+
+            payload, etag = load_session(name, clean)
 
             if self.headers.get("If-None-Match") == etag:
-                self.send_response(304)
-                self.end_headers()
-                return
+                self.send_response(304); self.end_headers(); return
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -138,18 +192,22 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
 
-        elif self.path in ("/", "/index.html"):
-            with open(os.path.join(BASE, "index.html"), "rb") as f:
-                content = f.read()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(content)))
-            self.end_headers()
-            self.wfile.write(content)
-
         else:
-            self.send_response(404)
-            self.end_headers()
+            # Static file serving (index.html, style.css, app.js, ...)
+            fname = "index.html" if path in ("/", "/index.html") else path.lstrip("/")
+            fpath = os.path.join(BASE, fname)
+            ext   = os.path.splitext(fname)[1].lower()
+
+            if os.path.isfile(fpath) and ext in STATIC_MIME:
+                with open(fpath, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", STATIC_MIME[ext])
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_response(404); self.end_headers()
 
     def log_message(self, fmt, *args):
         print(f"[{self.address_string()}] {fmt % args}")
@@ -163,5 +221,5 @@ if __name__ == "__main__":
             p = os.path.join(BASE, fname)
             marker = "✓" if os.path.exists(p) else "✗ MISSING"
             print(f"  [{name}][{k}] {fname}  {marker}")
-    print()
+    print(f"\n  Cleaning methods: {list(CLEANERS.keys())}\n")
     HTTPServer(("", port), Handler).serve_forever()

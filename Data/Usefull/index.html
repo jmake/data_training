@@ -6,161 +6,8 @@
   <title>Polar Training Analysis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:       #080d18;
-      --surface:  #0d1424;
-      --card:     #111827;
-      --border:   #1e293b;
-      --text:     #e2e8f0;
-      --muted:    #64748b;
-      --rowing:   #06b6d4;
-      --running:  #f59e0b;
-      --hr-color: #f87171;
-      --mag-color:#a78bfa;
-      --ax-color: #38bdf8;
-      --ay-color: #4ade80;
-      --az-color: #fb923c;
-    }
-
-    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
-
-    /* ── HEADER ── */
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 28px;
-      background: linear-gradient(135deg, #0a111f 0%, #0f172a 100%);
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 2px 20px rgba(0,0,0,.6);
-      position: sticky; top: 0; z-index: 100;
-    }
-    .logo {
-      font-size: 1.05rem; font-weight: 700; letter-spacing: .03em;
-      background: linear-gradient(90deg, #38bdf8, #818cf8 60%, #f472b6);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .logo span { font-weight: 300; opacity: .7; }
-    #status-pill {
-      display: flex; align-items: center; gap: 7px;
-      font-size: .75rem; font-weight: 600; padding: 5px 12px;
-      border-radius: 999px; background: #0a111f; border: 1px solid var(--border);
-      color: var(--muted); transition: color .3s, border-color .3s;
-    }
-    #status-pill.live   { color: #4ade80; border-color: #166534; }
-    #status-pill.error  { color: #f87171; border-color: #7f1d1d; }
-    #status-pill.loading{ color: #60a5fa; border-color: #1e3a5f; }
-    #dot {
-      width: 7px; height: 7px; border-radius: 50%; background: currentColor;
-      transition: background .3s;
-    }
-    #status-pill.live #dot { animation: pulse 1.4s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-    /* ── TABS ── */
-    .tab-bar {
-      display: flex; gap: 0; background: var(--surface);
-      border-bottom: 1px solid var(--border); padding: 0 28px;
-    }
-    .tab-btn {
-      padding: 13px 24px; font-size: .85rem; font-weight: 600;
-      background: none; border: none; cursor: pointer; color: var(--muted);
-      border-bottom: 2px solid transparent; margin-bottom: -1px;
-      letter-spacing: .03em; transition: color .2s, border-color .2s;
-    }
-    .tab-btn:hover { color: var(--text); }
-    .tab-btn.active[data-tab="rowing"]  { color: var(--rowing);  border-color: var(--rowing); }
-    .tab-btn.active[data-tab="running"] { color: var(--running); border-color: var(--running); }
-
-    /* ── STATS BAR ── */
-    .stats-row {
-      display: flex; gap: 10px; padding: 14px 24px;
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
-    }
-    .stat-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 10px; padding: 10px 16px; min-width: 110px;
-      transition: border-color .3s;
-    }
-    .stat-card.accent-rowing  { border-left: 3px solid var(--rowing); }
-    .stat-card.accent-running { border-left: 3px solid var(--running); }
-    .stat-label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .09em; margin-bottom: 4px; }
-    .stat-value { font-size: 1.1rem; font-weight: 700; }
-    .stat-unit  { font-size: .65rem; color: var(--muted); margin-left: 2px; }
-
-    .stats-inline {
-      display: flex; gap: 10px; flex-wrap: wrap; padding-bottom: 12px;
-    }
-    /* ── CONTENT ── */
-    .tab-content { display: none; padding: 16px 20px; }
-    .tab-content.active { display: block; }
-
-    .charts-top {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
-    }
-    .charts-axes {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-    }
-
-    /* ── SECTION HEADERS ── */
-    .section {
-      margin-bottom: 12px;
-    }
-    .section-header {
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 4px 8px;
-      font-size: .7rem; font-weight: 700; letter-spacing: .12em;
-      text-transform: uppercase; color: var(--muted);
-    }
-    .section-header::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
-    }
-    .section-header.sh-acc { color: var(--mag-color); }
-    .section-header.sh-hr  { color: var(--hr-color);  }
-
-    .chart-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; overflow: hidden; position: relative;
-      box-shadow: 0 4px 20px rgba(0,0,0,.35);
-    }
-    .chart-card .chart-title {
-      position: absolute; top: 9px; left: 14px;
-      font-size: .65rem; font-weight: 700; letter-spacing: .1em;
-      text-transform: uppercase; z-index: 5; padding: 2px 8px;
-      border-radius: 5px;
-    }
-    .ct-hr  { background: rgba(248,113,113,.12); color: var(--hr-color); }
-    .ct-mag { background: rgba(167,139,250,.12); color: var(--mag-color); }
-    .ct-ax  { background: rgba(56,189,248,.12);  color: var(--ax-color); }
-    .ct-ay  { background: rgba(74,222,128,.12);  color: var(--ay-color); }
-    .ct-az  { background: rgba(251,146,60,.12);  color: var(--az-color); }
-
-    .plot-box { width: 100%; height: 240px; }
-    .plot-box.small { height: 190px; }
-
-    /* ── LOADING OVERLAY ── */
-    .loading-overlay {
-      position: fixed; inset: 0; background: rgba(8,13,24,.85);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 999; backdrop-filter: blur(4px);
-    }
-    .loading-overlay.hidden { display: none; }
-    .spinner {
-      width: 40px; height: 40px; border: 3px solid var(--border);
-      border-top-color: #38bdf8; border-radius: 50%;
-      animation: spin .75s linear infinite; margin-bottom: 16px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-overlay p { color: var(--muted); font-size: .85rem; }
-
-    @media (max-width: 900px) {
-      .charts-top  { grid-template-columns: 1fr; }
-      .charts-axes { grid-template-columns: 1fr; }
-    }
-  </style>
 </head>
 <body>
 
@@ -187,7 +34,12 @@
 
   <!-- ACC section -->
   <div class="section" style="padding: 0 16px;">
-    <div class="section-header sh-acc">Accelerometer</div>
+    <div class="section-header sh-acc">Accelerometer
+      <select id="clean-rowing" class="clean-select" data-tab="rowing">
+        <option value="raw">Raw</option>
+        <option value="iqr">IQR (N=3.0)</option>
+      </select>
+    </div>
     <div class="stats-inline" id="acc-stats-rowing"></div>
     <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title ct-mag">ACC Magnitude</span>
@@ -225,7 +77,12 @@
 
   <!-- ACC section -->
   <div class="section" style="padding: 0 16px;">
-    <div class="section-header sh-acc">Accelerometer</div>
+    <div class="section-header sh-acc">Accelerometer
+      <select id="clean-running" class="clean-select" data-tab="running">
+        <option value="raw">Raw</option>
+        <option value="iqr">IQR (N=3.0)</option>
+      </select>
+    </div>
     <div class="stats-inline" id="acc-stats-running"></div>
     <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title ct-mag">ACC Magnitude</span>
@@ -258,222 +115,6 @@
   </div>
 </div>
 
-<script>
-const POLL_MS = 3000;
-
-const SESSIONS = {
-  rowing:  { prefix: "r", accent: "accent-rowing",  url: "/data/rowing" },
-  running: { prefix: "n", accent: "accent-running", url: "/data/running" }
-};
-
-const etags = { rowing: null, running: null };
-const inited = { rowing: false, running: false };
-
-// ── Plotly base layout ──
-function baseLayout(yLabel) {
-  return {
-    paper_bgcolor: "transparent",
-    plot_bgcolor:  "transparent",
-    margin: { l: 54, r: 14, t: 32, b: 36 },
-    font:   { family: "Inter, system-ui, sans-serif", color: "#64748b", size: 10 },
-    xaxis: {
-      title: { text: "Time (s)", standoff: 4 },
-      gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a"
-    },
-    yaxis: {
-      title: { text: yLabel, standoff: 4 },
-      gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a"
-    },
-    showlegend: false,
-    hovermode: "x unified"
-  };
-}
-
-const PLOTLY_CFG = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["toImage","sendDataToCloud"] };
-
-function traceGL(t, y, color, width = 1.2) {
-  return { x: t, y, type: "scattergl", mode: "lines", line: { color, width }, hovertemplate: "%{y:.1f}<extra></extra>" };
-}
-function traceSVG(t, y, color, width = 1.5) {
-  return { x: t, y, type: "scatter",   mode: "lines", line: { color, width }, hovertemplate: "%{y:.0f}<extra></extra>" };
-}
-
-// ── Stats cards ──
-function fmt_duration(s) {
-  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
-  return `${m}:${String(sec).padStart(2,"0")}`;
-}
-
-function renderStats(name, st) {
-  const accent = SESSIONS[name].accent;
-  const card = (label, value, unit) =>
-    `<div class="stat-card ${accent}">
-       <div class="stat-label">${label}</div>
-       <div class="stat-value">${value}<span class="stat-unit">${unit}</span></div>
-     </div>`;
-
-  document.getElementById(`acc-stats-${name}`).innerHTML = [
-    card("ACC RMS",     st.acc_rms,                    "g"),
-    card("Sample Rate", st.sample_rate,                 "Hz"),
-    card("ACC Points",  st.acc_samples.toLocaleString(), ""),
-  ].join("");
-
-  document.getElementById(`hr-stats-${name}`).innerHTML = [
-    card("Duration", fmt_duration(st.duration_s), "min"),
-    card("Avg HR",   st.hr_avg,                   "bpm"),
-    card("Max HR",   st.hr_max,                   "bpm"),
-    card("Min HR",   st.hr_min,                   "bpm"),
-  ].join("");
-}
-
-// ── Render charts ──
-function renderCharts(name, data, init) {
-  const p = SESSIONS[name].prefix;
-  const { acc, hr } = data;
-
-  // HR uses SVG (scatter) — few points, avoids WebGL context limit
-  // ACC uses WebGL (scattergl) — large datasets
-  const charts = [
-    { id: `${p}-hr`,  traces: [traceSVG(hr.t,  hr.bpm,  "#f87171")], layout: baseLayout("BPM") },
-    { id: `${p}-mag`, traces: [traceGL(acc.t,  acc.mag, "#a78bfa")], layout: baseLayout("mg")  },
-    { id: `${p}-ax`,  traces: [traceGL(acc.t,  acc.x,   "#38bdf8")], layout: baseLayout("mg")  },
-    { id: `${p}-ay`,  traces: [traceGL(acc.t,  acc.y,   "#4ade80")], layout: baseLayout("mg")  },
-    { id: `${p}-az`,  traces: [traceGL(acc.t,  acc.z,   "#fb923c")], layout: baseLayout("mg")  },
-  ];
-
-  charts.forEach(({ id, traces, layout }) => {
-    if (init) {
-      Plotly.newPlot(id, traces, layout, PLOTLY_CFG);
-    } else {
-      // Preserve user zoom: re-inject xaxis.range if not in autorange
-      const el = document.getElementById(id);
-      const xa = el && el._fullLayout && el._fullLayout.xaxis;
-      if (xa && !xa.autorange) {
-        layout = { ...layout, xaxis: { ...layout.xaxis, range: [xa.range[0], xa.range[1]], autorange: false } };
-      }
-      Plotly.react(id, traces, layout, PLOTLY_CFG);
-    }
-  });
-
-  if (init) setupSync(name, charts.map(c => c.id));
-}
-
-// ── Synchronized zoom/pan ──
-function setupSync(name, ids) {
-  let syncing = false;
-  ids.forEach(srcId => {
-    document.getElementById(srcId).on("plotly_relayout", ev => {
-      if (syncing) return;
-      syncing = true;
-      let update = null;
-      if (ev["xaxis.autorange"]) {
-        update = { "xaxis.autorange": true };
-      } else if (ev["xaxis.range[0]"] !== undefined) {
-        update = { "xaxis.range": [ev["xaxis.range[0]"], ev["xaxis.range[1]"]] };
-      }
-      if (update) {
-        ids.forEach(tgtId => { if (tgtId !== srcId) Plotly.relayout(tgtId, update); });
-      }
-      syncing = false;
-    });
-  });
-}
-
-// ── Session data cache (raw, not rendered) ──
-const sessionCache = { rowing: null, running: null };
-
-// ── Fetch + cache session data ──
-async function fetchSession(name) {
-  const { url } = SESSIONS[name];
-  const headers = {};
-  if (etags[name]) headers["If-None-Match"] = etags[name];
-
-  let res;
-  try {
-    res = await fetch(url, { headers });
-  } catch (e) {
-    setStatus("error", "Server unreachable");
-    return false;
-  }
-
-  if (res.status === 304) {
-    setStatus("live", "Live · no change");
-    return true; // unchanged
-  }
-  if (!res.ok) {
-    setStatus("error", `HTTP ${res.status}`);
-    return false;
-  }
-
-  etags[name] = res.headers.get("ETag");
-  sessionCache[name] = await res.json();
-  setStatus("live", "Live");
-  return true;
-}
-
-// ── Render cached data for a tab (only when visible) ──
-function renderIfVisible(name) {
-  if (!sessionCache[name]) return;
-  const data = sessionCache[name];
-  renderStats(name, data.stats);
-  renderCharts(name, data, !inited[name]);
-  if (!inited[name]) inited[name] = true;
-}
-
-// ── Status pill ──
-function setStatus(cls, text) {
-  const pill = document.getElementById("status-pill");
-  pill.className = cls;
-  document.getElementById("status-text").textContent = text;
-}
-
-// ── Tab switching ──
-let activeTab = "rowing";
-
-function resizeTab(name) {
-  const p = SESSIONS[name].prefix;
-  ["hr","mag","ax","ay","az"].forEach(c => {
-    const el = document.getElementById(`${p}-${c}`);
-    if (el && el.layout) Plotly.Plots.resize(el);
-  });
-}
-
-document.querySelectorAll(".tab-btn").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    const tab = btn.dataset.tab;
-    if (tab === activeTab) return;
-    activeTab = tab;
-
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-    document.getElementById(`tab-${tab}`).classList.add("active");
-
-    if (!sessionCache[tab]) {
-      // First time: fetch then render (tab is now visible)
-      await fetchSession(tab);
-      renderIfVisible(tab);
-    } else if (!inited[tab]) {
-      renderIfVisible(tab);
-    } else {
-      // Already rendered — just resize after display:block kicks in
-      setTimeout(() => resizeTab(tab), 30);
-    }
-  });
-});
-
-// ── Boot: only load active tab ──
-(async () => {
-  await fetchSession("rowing");
-  renderIfVisible("rowing");
-  document.getElementById("loading-overlay").classList.add("hidden");
-})();
-
-// ── Poll: fetch + re-render only active tab ──
-setInterval(async () => {
-  const ok = await fetchSession(activeTab);
-  if (ok && sessionCache[activeTab]) renderIfVisible(activeTab);
-}, POLL_MS);
-</script>
+<script src="app.js"></script>
 </body>
 </html>
