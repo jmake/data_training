@@ -11,8 +11,12 @@ function renderIfVisible(name) {
   if (!sessionCache[key]) return;
   const data = sessionCache[key];
   renderStats(name, data.stats);
-  renderCharts(name, data, !inited[name]);
-  if (!inited[name]) inited[name] = true;
+  const firstInit = !inited[name];
+  renderCharts(name, data, firstInit);
+  if (firstInit) {
+    inited[name] = true;
+    fftRun(name);   // auto-run FFT on first data load
+  }
 }
 
 // ── Tab switching ──
