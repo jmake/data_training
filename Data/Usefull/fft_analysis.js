@@ -66,6 +66,7 @@ function fftRenderCharts(name, t, origSignal) {
       name: "Reconstruction", line: { color: "#38bdf8", width: 1.5 } }
   ];
   const lyTime = {
+    uirevision: `${st.signal}_${st.clean}`,
     paper_bgcolor: "transparent", plot_bgcolor: "transparent",
     margin: { l: 54, r: 14, t: 32, b: 36 },
     font: { family: "Inter, system-ui, sans-serif", color: "#64748b", size: 10 },
@@ -83,6 +84,7 @@ function fftRenderCharts(name, t, origSignal) {
       fill: "tozeroy", fillcolor: "rgba(129,140,248,0.07)" }
   ];
   const lyFreq = {
+    uirevision: `${st.signal}_${st.clean}`,
     paper_bgcolor: "transparent", plot_bgcolor: "transparent",
     margin: { l: 54, r: 14, t: 32, b: 36 },
     font: { family: "Inter, system-ui, sans-serif", color: "#64748b", size: 10 },
