@@ -24,6 +24,7 @@ async function fftFetch(name, clean) {
 
 async function fftRun(name) {
   const st = fftState[name];
+  updateSignalOptions(name);
   const ok = await fftFetch(name, st.clean);
   if (!ok) return;
 
@@ -32,8 +33,12 @@ async function fftRun(name) {
   const fs = data.stats.sample_rate;
   const t = data.acc.t;
 
+  const mean = signal.reduce((a, b) => a + b, 0) / signal.length;
+  st.mean = mean;
+  const zeroMeanSignal = signal.map(v => v - mean);
+
   // Compute FFT (un-windowed for reconstruction, windowed for spectrum)
-  st.result = signalFFT(signal, fs);
+  st.result = signalFFT(zeroMeanSignal, fs);
   const nyq = fs / 2;
 
   // Initialize sliders on first run
@@ -67,7 +72,8 @@ function fftRenderCharts(name, t, origSignal) {
 
   const p = SESSIONS[name].prefix;
   const { freqs, power } = st.result;
-  const recon = bandpassReconstruct(st.result, st.fmin, st.fmax);
+  const mean = st.mean || 0;
+  const recon = bandpassReconstruct(st.result, st.fmin, st.fmax).map(v => v + mean);
 
   const isNorm = st.clean === "norm";
   const isIqr = st.clean === "iqr";
@@ -153,9 +159,17 @@ function calculateAutoHighCut(st) {
   }
 
   if (st.autocut === "harmonics") {
-    let maxIdx = 1; // ignore DC offset (index 0)
+    // Ignore low-frequency drift/leakage below 0.15 Hz for dominant harmonics search
+    let startIdx = 0;
+    for (let i = 0; i < freqs.length; i++) {
+      if (freqs[i] >= 0.15) {
+        startIdx = i;
+        break;
+      }
+    }
+    let maxIdx = startIdx;
     let maxVal = -1;
-    for (let i = 1; i < power.length; i++) {
+    for (let i = startIdx; i < power.length; i++) {
       if (power[i] > maxVal) {
         maxVal = power[i];
         maxIdx = i;
@@ -166,6 +180,26 @@ function calculateAutoHighCut(st) {
   }
 
   return st.fmax;
+}
+
+// Disable Magnitude signal option when Normalized cleaning is selected
+function updateSignalOptions(name) {
+  const st = fftState[name];
+  const sigSelect = document.getElementById(`fft-signal-${name}`);
+  if (!sigSelect) return;
+  const magOption = sigSelect.querySelector('option[value="mag"]');
+  if (!magOption) return;
+
+  if (st.clean === "norm") {
+    magOption.disabled = true;
+    if (st.signal === "mag") {
+      st.signal = "x";
+      sigSelect.value = "x";
+      st.result = null;
+    }
+  } else {
+    magOption.disabled = false;
+  }
 }
 
 // Fast path: only update reconstruction + band shading (no re-FFT)
