@@ -1,8 +1,8 @@
 // ── FFT Analysis section ─────────────────────────────────────────────────────
 
 const fftState = {
-  rowing:  { signal: "x", clean: "raw", fmin: 0, fmax: null, result: null, inited: false },
-  running: { signal: "x", clean: "raw", fmin: 0, fmax: null, result: null, inited: false }
+  rowing: { signal: "x", clean: "raw", autocut: "", fmin: 0, fmax: null, result: null, inited: false },
+  running: { signal: "x", clean: "raw", autocut: "", fmin: 0, fmax: null, result: null, inited: false }
 };
 
 // Fetch data for FFT independently from the main ACC clean selector
@@ -41,10 +41,21 @@ async function fftRun(name) {
     st.fmax = nyq;
     const fminEl = document.getElementById(`fft-fmin-${name}`);
     const fmaxEl = document.getElementById(`fft-fmax-${name}`);
-    fminEl.max   = nyq;  fminEl.value  = 0;
-    fmaxEl.max   = nyq;  fmaxEl.value  = nyq;
+    fminEl.max = nyq; fminEl.value = 0;
+    fmaxEl.max = nyq; fmaxEl.value = nyq;
     document.getElementById(`fft-fmin-val-${name}`).textContent = "0.0 Hz";
     document.getElementById(`fft-fmax-val-${name}`).textContent = `${nyq.toFixed(1)} Hz`;
+  }
+
+  // Apply Auto High Cut if active
+  if (st.autocut) {
+    const val = calculateAutoHighCut(st);
+    if (val !== undefined) {
+      st.fmax = val;
+      const fmaxEl = document.getElementById(`fft-fmax-${name}`);
+      fmaxEl.value = val;
+      document.getElementById(`fft-fmax-val-${name}`).textContent = `${val.toFixed(1)} Hz`;
+    }
   }
 
   fftRenderCharts(name, t, signal);
@@ -65,10 +76,14 @@ function fftRenderCharts(name, t, origSignal) {
 
   // ── Time domain: original (dim) + reconstruction (blue) ──
   const trTime = [
-    { x: t, y: Array.from(origSignal), type: "scattergl", mode: "lines",
-      name: "Original", line: { color: "#ef4444", width: 1 } },
-    { x: t, y: recon, type: "scattergl", mode: "lines",
-      name: "Reconstruction", line: { color: "#38bdf8", width: 1.5 } }
+    {
+      x: t, y: Array.from(origSignal), type: "scattergl", mode: "lines",
+      name: "Original", line: { color: "#ef4444", width: 1 }
+    },
+    {
+      x: t, y: recon, type: "scattergl", mode: "lines",
+      name: "Reconstruction", line: { color: "#38bdf8", width: 1.5 }
+    }
   ];
   const lyTime = {
     uirevision: `${st.signal}_${st.clean}`,
@@ -83,10 +98,12 @@ function fftRenderCharts(name, t, origSignal) {
 
   // ── Spectrum: filled area + selected band shading ──
   const trFreq = [
-    { x: Array.from(freqs), y: Array.from(power),
+    {
+      x: Array.from(freqs), y: Array.from(power),
       type: "scatter", mode: "lines", name: "Spectrum",
       line: { color: "#818cf8", width: 1.2 },
-      fill: "tozeroy", fillcolor: "rgba(129,140,248,0.07)" }
+      fill: "tozeroy", fillcolor: "rgba(129,140,248,0.07)"
+    }
   ];
   const lyFreq = {
     uirevision: `${st.signal}_${st.clean}`,
@@ -94,7 +111,7 @@ function fftRenderCharts(name, t, origSignal) {
     margin: { l: 54, r: 14, t: 32, b: 36 },
     font: { family: "Inter, system-ui, sans-serif", color: "#64748b", size: 10 },
     xaxis: { title: { text: "Frequency (Hz)", standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a" },
-    yaxis: { title: { text: yFreqLabel, standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a" },
+    yaxis: { title: { text: yFreqLabel, standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a", type: "log" },
     showlegend: false, hovermode: "x unified",
     shapes: [{
       type: "rect", xref: "x", yref: "paper",
@@ -115,6 +132,40 @@ function fftRenderCharts(name, t, origSignal) {
     Plotly.react(timeDivId, trTime, lyTime, PLOTLY_CFG);
     Plotly.react(freqDivId, trFreq, lyFreq, PLOTLY_CFG);
   }
+}
+
+// Calculate auto high cut frequency
+function calculateAutoHighCut(st) {
+  if (!st.result || !st.autocut) return st.fmax;
+  const { freqs, power } = st.result;
+  const nyq = freqs[freqs.length - 1];
+
+  if (st.autocut === "energy") {
+    const totalPower = Array.from(power).reduce((a, b) => a + b, 0);
+    let cumSum = 0;
+    for (let i = 0; i < power.length; i++) {
+      cumSum += power[i];
+      if (cumSum >= 0.95 * totalPower) {
+        return freqs[i];
+      }
+    }
+    return nyq;
+  }
+
+  if (st.autocut === "harmonics") {
+    let maxIdx = 1; // ignore DC offset (index 0)
+    let maxVal = -1;
+    for (let i = 1; i < power.length; i++) {
+      if (power[i] > maxVal) {
+        maxVal = power[i];
+        maxIdx = i;
+      }
+    }
+    const fdom = freqs[maxIdx];
+    return Math.min(fdom * 5, nyq);
+  }
+
+  return st.fmax;
 }
 
 // Fast path: only update reconstruction + band shading (no re-FFT)
@@ -142,6 +193,20 @@ function fftUpdateFilter(name) {
     await fftRun(name);
   });
 
+  document.getElementById(`fft-autocut-${name}`).addEventListener("change", e => {
+    st.autocut = e.target.value;
+    if (st.autocut) {
+      const val = calculateAutoHighCut(st);
+      if (val !== undefined) {
+        st.fmax = val;
+        const fmaxEl = document.getElementById(`fft-fmax-${name}`);
+        fmaxEl.value = val;
+        document.getElementById(`fft-fmax-val-${name}`).textContent = `${val.toFixed(1)} Hz`;
+        fftUpdateFilter(name);
+      }
+    }
+  });
+
   document.getElementById(`fft-fmin-${name}`).addEventListener("input", e => {
     let val = parseFloat(e.target.value);
     if (val >= st.fmax) { val = st.fmax - 0.1; e.target.value = val; }
@@ -155,6 +220,8 @@ function fftUpdateFilter(name) {
     if (val <= st.fmin) { val = st.fmin + 0.1; e.target.value = val; }
     st.fmax = val;
     document.getElementById(`fft-fmax-val-${name}`).textContent = `${val.toFixed(1)} Hz`;
+    st.autocut = "";
+    document.getElementById(`fft-autocut-${name}`).value = "";
     fftUpdateFilter(name);
   });
 });
