@@ -58,6 +58,11 @@ function fftRenderCharts(name, t, origSignal) {
   const { freqs, power } = st.result;
   const recon = bandpassReconstruct(st.result, st.fmin, st.fmax);
 
+  const isNorm = st.clean === "norm";
+  const isIqr = st.clean === "iqr";
+  const yLabel = isNorm ? "Normalized" : (isIqr ? "Q3 + A x IQR" : "g");
+  const yFreqLabel = isNorm ? "Amplitude (Normalized)" : (isIqr ? "Amplitude (Q3 + A x IQR)" : "Amplitude (g)");
+
   // ── Time domain: original (dim) + reconstruction (blue) ──
   const trTime = [
     { x: t, y: Array.from(origSignal), type: "scattergl", mode: "lines",
@@ -71,7 +76,7 @@ function fftRenderCharts(name, t, origSignal) {
     margin: { l: 54, r: 14, t: 32, b: 36 },
     font: { family: "Inter, system-ui, sans-serif", color: "#64748b", size: 10 },
     xaxis: { title: { text: "Time (s)", standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a" },
-    yaxis: { title: { text: "g", standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a" },
+    yaxis: { title: { text: yLabel, standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a" },
     showlegend: true, hovermode: "x unified",
     legend: { font: { size: 10, color: "#94a3b8" }, bgcolor: "transparent", orientation: "h", x: 0, y: 1.08 }
   };
@@ -89,7 +94,7 @@ function fftRenderCharts(name, t, origSignal) {
     margin: { l: 54, r: 14, t: 32, b: 36 },
     font: { family: "Inter, system-ui, sans-serif", color: "#64748b", size: 10 },
     xaxis: { title: { text: "Frequency (Hz)", standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a" },
-    yaxis: { title: { text: "Amplitude (g)", standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a" },
+    yaxis: { title: { text: yFreqLabel, standoff: 4 }, gridcolor: "#1a2540", zerolinecolor: "#1e293b", color: "#4a5a7a" },
     showlegend: false, hovermode: "x unified",
     shapes: [{
       type: "rect", xref: "x", yref: "paper",

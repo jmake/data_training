@@ -35,14 +35,17 @@ function renderCharts(name, data, init) {
   const p = SESSIONS[name].prefix;
   const { acc, hr } = data;
 
+  const clean = cleanMethod[name];
+  const accUnit = clean === "norm" ? "Normalized" : (clean === "iqr" ? "Q3 + A x IQR" : "g");
+
   // HR → SVG (few points, avoids WebGL context limit)
   // ACC → WebGL (large datasets)
   const charts = [
     { id: `${p}-hr`,  traces: [traceSVG(hr.t,  hr.bpm,  "#f87171")], layout: baseLayout("BPM") },
-    { id: `${p}-mag`, traces: [traceGL(acc.t,  acc.mag, "#a78bfa")], layout: baseLayout("g")   },
-    { id: `${p}-ax`,  traces: [traceGL(acc.t,  acc.x,   "#38bdf8")], layout: baseLayout("g")   },
-    { id: `${p}-ay`,  traces: [traceGL(acc.t,  acc.y,   "#4ade80")], layout: baseLayout("g")   },
-    { id: `${p}-az`,  traces: [traceGL(acc.t,  acc.z,   "#fb923c")], layout: baseLayout("g")   },
+    { id: `${p}-mag`, traces: [traceGL(acc.t,  acc.mag, "#a78bfa")], layout: baseLayout(accUnit)   },
+    { id: `${p}-ax`,  traces: [traceGL(acc.t,  acc.x,   "#38bdf8")], layout: baseLayout(accUnit)   },
+    { id: `${p}-ay`,  traces: [traceGL(acc.t,  acc.y,   "#4ade80")], layout: baseLayout(accUnit)   },
+    { id: `${p}-az`,  traces: [traceGL(acc.t,  acc.z,   "#fb923c")], layout: baseLayout(accUnit)   },
   ];
 
   charts.forEach(({ id, traces, layout }) => {
