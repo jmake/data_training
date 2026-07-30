@@ -66,7 +66,7 @@ function fftRenderCharts(name, t, origSignal) {
   // ── Time domain: original (dim) + reconstruction (blue) ──
   const trTime = [
     { x: t, y: Array.from(origSignal), type: "scattergl", mode: "lines",
-      name: "Original", line: { color: "#334155", width: 1 } },
+      name: "Original", line: { color: "#ef4444", width: 1 } },
     { x: t, y: recon, type: "scattergl", mode: "lines",
       name: "Reconstruction", line: { color: "#38bdf8", width: 1.5 } }
   ];
