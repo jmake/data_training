@@ -27,6 +27,7 @@
 <div class="tab-bar">
   <button class="tab-btn"        data-tab="rowing">🚣 Rowing</button>
   <button class="tab-btn active" data-tab="running">🏃 Running</button>
+  <button class="tab-btn"        data-tab="wallballs">🥎 Wallballs</button>
 </div>
 
 <!-- ══════════════ ROWING ══════════════ -->
@@ -135,6 +136,47 @@
           <div class="stat-label">Noise Reduction</div>
           <div class="stat-value"><span id="fft-noise-rowing">0.0</span><span class="stat-unit">%</span></div>
         </div>
+      </div>
+    </div>
+    <!-- Cycle Segmentation Section -->
+    <div class="section" style="margin-top: 16px;">
+      <div class="section-header sh-fft">Cycle Segmentation</div>
+      <div class="fft-controls" style="margin-bottom: 12px;">
+        <div class="fft-ctrl-group">
+          <span class="fft-ctrl-label">Method</span>
+          <select id="fft-seg-method-rowing" class="clean-select">
+            <option value="mined" selected>Mined Profile</option>
+            <option value="average">Average Profile</option>
+          </select>
+        </div>
+        <div class="fft-ctrl-group">
+          <span class="fft-ctrl-label">Min Correlation</span>
+          <div class="fft-slider-wrap">
+            <input type="range" id="fft-seg-thresh-rowing" min="0.5" max="0.95" value="0.75" step="0.05">
+            <span id="fft-seg-thresh-val-rowing" class="fft-slider-val">0.75</span>
+          </div>
+        </div>
+      </div>
+      <div class="charts-top" style="grid-template-columns: 1.5fr 1fr; margin-bottom: 12px;">
+        <div class="chart-card">
+          <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Template Profile</span>
+          <div id="r-fft-template" class="plot-box" style="height: 180px;"></div>
+        </div>
+        <div class="stat-card" style="display: flex; flex-direction: column; justify-content: center; gap: 12px;">
+          <div>
+            <div class="stat-label">Total Strokes Detected</div>
+            <div class="stat-value"><span id="fft-seg-count-rowing">0</span></div>
+          </div>
+          <div>
+            <div class="stat-label">Avg Stroke Duration</div>
+            <div class="stat-value"><span id="fft-seg-dur-rowing">0.0</span><span class="stat-unit">s</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Cycle Alignment Overlay Plot -->
+      <div class="chart-card" style="margin-top: 12px;">
+        <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Aligned Cycles Overlay</span>
+        <div id="r-fft-aligned" class="plot-box" style="height: 220px;"></div>
       </div>
     </div>
   </div>
@@ -246,6 +288,197 @@
           <div class="stat-label">Noise Reduction</div>
           <div class="stat-value"><span id="fft-noise-running">0.0</span><span class="stat-unit">%</span></div>
         </div>
+      </div>
+    </div>
+    <!-- Cycle Segmentation Section -->
+    <div class="section" style="margin-top: 16px;">
+      <div class="section-header sh-fft">Cycle Segmentation</div>
+      <div class="fft-controls" style="margin-bottom: 12px;">
+        <div class="fft-ctrl-group">
+          <span class="fft-ctrl-label">Method</span>
+          <select id="fft-seg-method-running" class="clean-select">
+            <option value="mined" selected>Mined Profile</option>
+            <option value="average">Average Profile</option>
+          </select>
+        </div>
+        <div class="fft-ctrl-group">
+          <span class="fft-ctrl-label">Min Correlation</span>
+          <div class="fft-slider-wrap">
+            <input type="range" id="fft-seg-thresh-running" min="0.5" max="0.95" value="0.75" step="0.05">
+            <span id="fft-seg-thresh-val-running" class="fft-slider-val">0.75</span>
+          </div>
+        </div>
+      </div>
+      <div class="charts-top" style="grid-template-columns: 1.5fr 1fr; margin-bottom: 12px;">
+        <div class="chart-card">
+          <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Template Profile</span>
+          <div id="n-fft-template" class="plot-box" style="height: 180px;"></div>
+        </div>
+        <div class="stat-card" style="display: flex; flex-direction: column; justify-content: center; gap: 12px;">
+          <div>
+            <div class="stat-label">Total Strides Detected</div>
+            <div class="stat-value"><span id="fft-seg-count-running">0</span></div>
+          </div>
+          <div>
+            <div class="stat-label">Avg Stride Duration</div>
+            <div class="stat-value"><span id="fft-seg-dur-running">0.0</span><span class="stat-unit">s</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Cycle Alignment Overlay Plot -->
+      <div class="chart-card" style="margin-top: 12px;">
+        <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Aligned Cycles Overlay</span>
+        <div id="n-fft-aligned" class="plot-box" style="height: 220px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ WALLBALLS ══════════════ -->
+<div id="tab-wallballs" class="tab-content">
+
+  <!-- ACC section -->
+  <div class="section" style="padding: 0 16px;">
+    <div class="section-header sh-acc">Accelerometer
+      <select id="clean-wallballs" class="clean-select" data-tab="wallballs">
+        <option value="raw">Raw</option>
+        <option value="iqr">IQR (N=3.0)</option>
+        <option value="norm">Normalized (Unit)</option>
+      </select>
+    </div>
+    <div class="stats-inline" id="acc-stats-wallballs"></div>
+    <div class="chart-card" style="margin-bottom: 12px;">
+      <span class="chart-title ct-mag">ACC Magnitude</span>
+      <div id="w-mag" class="plot-box"></div>
+    </div>
+    <div class="charts-axes">
+      <div class="chart-card">
+        <span class="chart-title ct-ax">ACC X</span>
+        <div id="w-ax" class="plot-box small"></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-title ct-ay">ACC Y</span>
+        <div id="w-ay" class="plot-box small"></div>
+      </div>
+      <div class="chart-card">
+        <span class="chart-title ct-az">ACC Z</span>
+        <div id="w-az" class="plot-box small"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HR section -->
+  <div class="section" style="padding: 12px 16px 16px;">
+    <div class="section-header sh-hr">Heart Rate</div>
+    <div class="stats-inline" id="hr-stats-wallballs"></div>
+    <div class="chart-card">
+      <span class="chart-title ct-hr">Heart Rate</span>
+      <div id="w-hr" class="plot-box"></div>
+    </div>
+  </div>
+
+  <!-- Frequency Analysis section -->
+  <div class="section" style="padding: 0 16px 16px;">
+    <div class="section-header sh-fft">Frequency Analysis</div>
+    <div class="fft-controls">
+      <div class="fft-ctrl-group">
+        <span class="fft-ctrl-label">Signal</span>
+        <select id="fft-signal-wallballs" class="clean-select">
+          <option value="x">ACC X</option>
+          <option value="y">ACC Y</option>
+          <option value="z">ACC Z</option>
+          <option value="mag" selected>Magnitude</option>
+        </select>
+      </div>
+      <div class="fft-ctrl-group">
+        <span class="fft-ctrl-label">Cleaning</span>
+        <select id="fft-clean-wallballs" class="clean-select">
+          <option value="raw">Raw</option>
+          <option value="iqr" selected>IQR (N=3.0)</option>
+          <option value="norm">Normalized (Unit)</option>
+        </select>
+      </div>
+      <div class="fft-ctrl-group">
+        <span class="fft-ctrl-label">Auto High Cut</span>
+        <select id="fft-autocut-wallballs" class="clean-select">
+          <option value="" disabled hidden>Choose mode...</option>
+          <option value="energy">Cumulative Energy (95%)</option>
+          <option value="harmonics" selected>Dominant Harmonics (5x)</option>
+        </select>
+      </div>
+      <div class="fft-ctrl-group">
+        <span class="fft-ctrl-label">Low cut</span>
+        <div class="fft-slider-wrap">
+          <input type="range" id="fft-fmin-wallballs" min="0" max="100" value="0" step="0.1">
+          <span id="fft-fmin-val-wallballs" class="fft-slider-val">0.0 Hz</span>
+        </div>
+      </div>
+      <div class="fft-ctrl-group">
+        <span class="fft-ctrl-label">High cut</span>
+        <div class="fft-slider-wrap">
+          <input type="range" id="fft-fmax-wallballs" min="0" max="100" value="100" step="0.1">
+          <span id="fft-fmax-val-wallballs" class="fft-slider-val">100.0 Hz</span>
+        </div>
+      </div>
+    </div>
+    <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+      <div class="stat-card">
+        <div class="stat-label">Preserved Energy</div>
+        <div class="stat-value"><span id="fft-energy-wallballs">100.0</span><span class="stat-unit">%</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Noise Reduction</div>
+        <div class="stat-value"><span id="fft-noise-wallballs">0.0</span><span class="stat-unit">%</span></div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-bottom: 12px;">
+      <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Time Domain</span>
+      <div id="w-fft-time" class="plot-box"></div>
+    </div>
+    <div class="chart-card" style="margin-bottom: 12px;">
+      <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Spectrum</span>
+      <div id="w-fft-freq" class="plot-box"></div>
+    </div>
+    
+    <!-- Cycle Segmentation Section -->
+    <div class="section" style="margin-top: 16px;">
+      <div class="section-header sh-fft">Cycle Segmentation</div>
+      <div class="fft-controls" style="margin-bottom: 12px;">
+        <div class="fft-ctrl-group">
+          <span class="fft-ctrl-label">Method</span>
+          <select id="fft-seg-method-wallballs" class="clean-select">
+            <option value="mined" selected>Mined Profile</option>
+            <option value="average">Average Profile</option>
+          </select>
+        </div>
+        <div class="fft-ctrl-group">
+          <span class="fft-ctrl-label">Min Correlation</span>
+          <div class="fft-slider-wrap">
+            <input type="range" id="fft-seg-thresh-wallballs" min="0.5" max="0.95" value="0.75" step="0.05">
+            <span id="fft-seg-thresh-val-wallballs" class="fft-slider-val">0.75</span>
+          </div>
+        </div>
+      </div>
+      <div class="charts-top" style="grid-template-columns: 1.5fr 1fr; margin-bottom: 12px;">
+        <div class="chart-card">
+          <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Template Profile</span>
+          <div id="w-fft-template" class="plot-box" style="height: 180px;"></div>
+        </div>
+        <div class="stat-card" style="display: flex; flex-direction: column; justify-content: center; gap: 12px;">
+          <div>
+            <div class="stat-label">Total Reps Detected</div>
+            <div class="stat-value"><span id="fft-seg-count-wallballs">0</span></div>
+          </div>
+          <div>
+            <div class="stat-label">Avg Rep Duration</div>
+            <div class="stat-value"><span id="fft-seg-dur-wallballs">0.0</span><span class="stat-unit">s</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Cycle Alignment Overlay Plot -->
+      <div class="chart-card" style="margin-top: 12px;">
+        <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Aligned Cycles Overlay</span>
+        <div id="w-fft-aligned" class="plot-box" style="height: 220px;"></div>
       </div>
     </div>
   </div>
