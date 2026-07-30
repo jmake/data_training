@@ -25,12 +25,12 @@
 </header>
 
 <div class="tab-bar">
-  <button class="tab-btn active" data-tab="rowing">🚣 Rowing</button>
-  <button class="tab-btn"        data-tab="running">🏃 Running</button>
+  <button class="tab-btn"        data-tab="rowing">🚣 Rowing</button>
+  <button class="tab-btn active" data-tab="running">🏃 Running</button>
 </div>
 
 <!-- ══════════════ ROWING ══════════════ -->
-<div id="tab-rowing" class="tab-content active">
+<div id="tab-rowing" class="tab-content">
 
   <!-- ACC section -->
   <div class="section" style="padding: 0 16px;">
@@ -82,23 +82,23 @@
           <option value="x">ACC X</option>
           <option value="y">ACC Y</option>
           <option value="z">ACC Z</option>
-          <option value="mag">Magnitude</option>
+          <option value="mag" selected>Magnitude</option>
         </select>
       </div>
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">Cleaning</span>
         <select id="fft-clean-rowing" class="clean-select">
           <option value="raw">Raw</option>
-          <option value="iqr">IQR (N=3.0)</option>
+          <option value="iqr" selected>IQR (N=3.0)</option>
           <option value="norm">Normalized (Unit)</option>
         </select>
       </div>
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">Auto High Cut</span>
         <select id="fft-autocut-rowing" class="clean-select">
-          <option value="" disabled selected hidden>Choose mode...</option>
+          <option value="" disabled hidden>Choose mode...</option>
           <option value="energy">Cumulative Energy (95%)</option>
-          <option value="harmonics">Dominant Harmonics (5x)</option>
+          <option value="harmonics" selected>Dominant Harmonics (5x)</option>
         </select>
       </div>
       <div class="fft-ctrl-group">
@@ -120,15 +120,28 @@
       <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Time Domain</span>
       <div id="r-fft-time" class="plot-box"></div>
     </div>
-    <div class="chart-card">
+    <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Spectrum</span>
       <div id="r-fft-freq" class="plot-box"></div>
+    </div>
+    <div class="section" style="margin-top: 16px;">
+      <div class="section-header sh-fft">Filter Metrics</div>
+      <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+        <div class="stat-card">
+          <div class="stat-label">Preserved Energy</div>
+          <div class="stat-value"><span id="fft-energy-rowing">100.0</span><span class="stat-unit">%</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Noise Reduction</div>
+          <div class="stat-value"><span id="fft-noise-rowing">0.0</span><span class="stat-unit">%</span></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- ══════════════ RUNNING ══════════════ -->
-<div id="tab-running" class="tab-content">
+<div id="tab-running" class="tab-content active">
 
   <!-- ACC section -->
   <div class="section" style="padding: 0 16px;">
@@ -180,23 +193,23 @@
           <option value="x">ACC X</option>
           <option value="y">ACC Y</option>
           <option value="z">ACC Z</option>
-          <option value="mag">Magnitude</option>
+          <option value="mag" selected>Magnitude</option>
         </select>
       </div>
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">Cleaning</span>
         <select id="fft-clean-running" class="clean-select">
           <option value="raw">Raw</option>
-          <option value="iqr">IQR (N=3.0)</option>
+          <option value="iqr" selected>IQR (N=3.0)</option>
           <option value="norm">Normalized (Unit)</option>
         </select>
       </div>
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">Auto High Cut</span>
         <select id="fft-autocut-running" class="clean-select">
-          <option value="" disabled selected hidden>Choose mode...</option>
+          <option value="" disabled hidden>Choose mode...</option>
           <option value="energy">Cumulative Energy (95%)</option>
-          <option value="harmonics">Dominant Harmonics (5x)</option>
+          <option value="harmonics" selected>Dominant Harmonics (5x)</option>
         </select>
       </div>
       <div class="fft-ctrl-group">
@@ -218,9 +231,22 @@
       <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Time Domain</span>
       <div id="n-fft-time" class="plot-box"></div>
     </div>
-    <div class="chart-card">
+    <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Spectrum</span>
       <div id="n-fft-freq" class="plot-box"></div>
+    </div>
+    <div class="section" style="margin-top: 16px;">
+      <div class="section-header sh-fft">Filter Metrics</div>
+      <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+        <div class="stat-card">
+          <div class="stat-label">Preserved Energy</div>
+          <div class="stat-value"><span id="fft-energy-running">100.0</span><span class="stat-unit">%</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Noise Reduction</div>
+          <div class="stat-value"><span id="fft-noise-running">0.0</span><span class="stat-unit">%</span></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

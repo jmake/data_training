@@ -20,7 +20,7 @@ function renderIfVisible(name) {
 }
 
 // ── Tab switching ──
-let activeTab = "rowing";
+let activeTab = "running";
 
 function resizeTab(name) {
   const p = SESSIONS[name].prefix;
@@ -65,8 +65,8 @@ document.querySelectorAll(".clean-select").forEach(sel => {
 
 // ── Boot ──
 (async () => {
-  await fetchSession("rowing");
-  renderIfVisible("rowing");
+  await fetchSession("running");
+  renderIfVisible("running");
   document.getElementById("loading-overlay").classList.add("hidden");
 })();
 

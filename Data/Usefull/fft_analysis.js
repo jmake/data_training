@@ -1,8 +1,8 @@
 // ── FFT Analysis section ─────────────────────────────────────────────────────
 
 const fftState = {
-  rowing: { signal: "x", clean: "raw", autocut: "", fmin: 0, fmax: null, result: null, inited: false },
-  running: { signal: "x", clean: "raw", autocut: "", fmin: 0, fmax: null, result: null, inited: false }
+  rowing:  { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false },
+  running: { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false }
 };
 
 // Fetch data for FFT independently from the main ACC clean selector
@@ -73,7 +73,30 @@ function fftRenderCharts(name, t, origSignal) {
   const p = SESSIONS[name].prefix;
   const { freqs, power } = st.result;
   const mean = st.mean || 0;
-  const recon = bandpassReconstruct(st.result, st.fmin, st.fmax).map(v => v + mean);
+  const reconRaw = bandpassReconstruct(st.result, st.fmin, st.fmax);
+  const recon = reconRaw.map(v => v + mean);
+
+  // Calculate Preserved Energy
+  let bandPower = 0;
+  let totalPower = 0;
+  for (let i = 0; i < freqs.length; i++) {
+    const f = freqs[i];
+    totalPower += power[i];
+    if (f >= st.fmin && f <= st.fmax) {
+      bandPower += power[i];
+    }
+  }
+  const pctEnergy = totalPower > 0 ? (bandPower / totalPower) * 100 : 0;
+
+  // Calculate Noise Reduction (SD of orig zero-mean vs SD of recon zero-mean)
+  const zeroMeanSignal = Array.from(origSignal).map(v => v - mean);
+  const sdOrig = Math.sqrt(zeroMeanSignal.reduce((sum, v) => sum + v*v, 0) / zeroMeanSignal.length);
+  const sdRecon = Math.sqrt(reconRaw.reduce((sum, v) => sum + v*v, 0) / reconRaw.length);
+  const pctNoiseReduction = sdOrig > 0 ? ((sdOrig - sdRecon) / sdOrig) * 100 : 0;
+
+  // Update UI Elements
+  document.getElementById(`fft-energy-${name}`).textContent = pctEnergy.toFixed(1);
+  document.getElementById(`fft-noise-${name}`).textContent = pctNoiseReduction.toFixed(1);
 
   const { trTime, lyTime, trFreq, lyFreq } = buildFftPlotlyConfig(st, t, origSignal, recon, freqs, power);
 

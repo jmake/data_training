@@ -17,3 +17,18 @@
 .fft-slider-val {
   font-size: .7rem; color: #818cf8; min-width: 58px;
 }
+
+/* ── FFT Metrics scaling (80% size) ── */
+.fft-metrics-row .stat-card {
+  padding: 8px 13px;
+  min-width: 90px;
+}
+.fft-metrics-row .stat-label {
+  font-size: 0.52rem;
+}
+.fft-metrics-row .stat-value {
+  font-size: 0.88rem;
+}
+.fft-metrics-row .stat-unit {
+  font-size: 0.52rem;
+}
