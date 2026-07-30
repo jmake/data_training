@@ -105,9 +105,27 @@ def apply_iqr_clip(acc, n=3.0):
     return {"t": acc["t"], "x": cx, "y": cy, "z": cz, "mag": cm}
 
 
+def apply_unit_norm(acc):
+    mag = acc["mag"]
+    cx, cy, cz, cm = [], [], [], []
+    for xi, yi, zi, m in zip(acc["x"], acc["y"], acc["z"], mag):
+        if m > 1e-6:
+            cx.append(xi / m)
+            cy.append(yi / m)
+            cz.append(zi / m)
+            cm.append(1.0)
+        else:
+            cx.append(0.0)
+            cy.append(0.0)
+            cz.append(0.0)
+            cm.append(0.0)
+    return {"t": acc["t"], "x": cx, "y": cy, "z": cz, "mag": cm}
+
+
 CLEANERS = {
     "raw": lambda acc: acc,
     "iqr": apply_iqr_clip,
+    "norm": apply_unit_norm,
     # future entries: "median": apply_median_filter, "savgol": apply_savgol, ...
 }
 
