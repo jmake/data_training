@@ -1,0 +1,61 @@
+/* ── HEADER ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #0a111f 0%, #0f172a 100%);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 20px rgba(0,0,0,.6);
+  position: sticky; top: 0; z-index: 100;
+}
+.logo {
+  font-size: 1.05rem; font-weight: 700; letter-spacing: .03em;
+  background: linear-gradient(90deg, #38bdf8, #818cf8 60%, #f472b6);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo span { font-weight: 300; opacity: .7; }
+#status-pill {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .75rem; font-weight: 600; padding: 5px 12px;
+  border-radius: 999px; background: #0a111f; border: 1px solid var(--border);
+  color: var(--muted); transition: color .3s, border-color .3s;
+}
+#status-pill.live   { color: #4ade80; border-color: #166534; }
+#status-pill.error  { color: #f87171; border-color: #7f1d1d; }
+#status-pill.loading{ color: #60a5fa; border-color: #1e3a5f; }
+#dot {
+  width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+  transition: background .3s;
+}
+#status-pill.live #dot { animation: pulse 1.4s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex; gap: 0; background: var(--surface);
+  border-bottom: 1px solid var(--border); padding: 0 28px;
+}
+.tab-btn {
+  padding: 13px 24px; font-size: .85rem; font-weight: 600;
+  background: none; border: none; cursor: pointer; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  letter-spacing: .03em; transition: color .2s, border-color .2s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active[data-tab="rowing"]  { color: var(--rowing);  border-color: var(--rowing); }
+.tab-btn.active[data-tab="running"] { color: var(--running); border-color: var(--running); }
+
+/* ── CONTENT ── */
+.tab-content { display: none; padding: 16px 20px; }
+.tab-content.active { display: block; }
+
+.charts-top {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
+}
+.charts-axes {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .charts-top  { grid-template-columns: 1fr; }
+  .charts-axes { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,19 @@
+/* ── FFT ANALYSIS SECTION ── */
+.section-header.sh-fft { color: #818cf8; }
+
+.fft-controls {
+  display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap;
+  padding-bottom: 14px;
+}
+.fft-ctrl-group {
+  display: flex; flex-direction: column; gap: 5px;
+}
+.fft-ctrl-label {
+  font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .09em;
+}
+.fft-slider-wrap {
+  display: flex; align-items: center; gap: 8px;
+}
+.fft-slider-val {
+  font-size: .7rem; color: #818cf8; min-width: 58px;
+}
