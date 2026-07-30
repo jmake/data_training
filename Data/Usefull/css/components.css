@@ -11,6 +11,7 @@
 }
 .stat-card.accent-rowing  { border-left: 3px solid var(--rowing); }
 .stat-card.accent-running { border-left: 3px solid var(--running); }
+.stat-card.accent-wallballs { border-left: 3px solid var(--wallballs); }
 .stat-label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .09em; margin-bottom: 4px; }
 .stat-value { font-size: 1.1rem; font-weight: 700; }
 .stat-unit  { font-size: .65rem; color: var(--muted); margin-left: 2px; }

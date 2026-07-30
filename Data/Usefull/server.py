@@ -29,6 +29,10 @@ SESSIONS = {
     "running": {
         "acc": "polar_sense_065afd32_1785223632096_acc.txt",
         "hr":  "polar_sense_065afd32_1785223632096_hr.txt",
+    },
+    "wallballs": {
+        "acc": "polar_h10_1d61cd3d_1785393791901_acc.txt",
+        "hr":  "polar_h10_1d61cd3d_1785393791901_hr.txt",
     }
 }
 

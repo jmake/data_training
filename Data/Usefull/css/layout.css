@@ -43,6 +43,7 @@ header {
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active[data-tab="rowing"]  { color: var(--rowing);  border-color: var(--rowing); }
 .tab-btn.active[data-tab="running"] { color: var(--running); border-color: var(--running); }
+.tab-btn.active[data-tab="wallballs"] { color: var(--wallballs); border-color: var(--wallballs); }
 
 /* ── CONTENT ── */
 .tab-content { display: none; padding: 16px 20px; }

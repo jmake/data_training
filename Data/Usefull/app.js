@@ -24,7 +24,7 @@ let activeTab = "running";
 
 function resizeTab(name) {
   const p = SESSIONS[name].prefix;
-  ["hr", "mag", "ax", "ay", "az"].forEach(c => {
+  ["hr", "mag", "ax", "ay", "az", "fft-time", "fft-freq", "fft-template", "fft-aligned"].forEach(c => {
     const el = document.getElementById(`${p}-${c}`);
     if (el && el.layout) Plotly.Plots.resize(el);
   });
