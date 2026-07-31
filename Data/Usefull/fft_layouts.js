@@ -9,14 +9,28 @@ function buildFftPlotlyConfig(st, t, origSignal, recon, freqs, power, boundaries
   // Time Domain Trace & Layout
   const trTime = [
     {
-      x: t, y: Array.from(origSignal), type: "scattergl", mode: "lines",
+      x: t, y: Array.from(origSignal), type: "scatter", mode: "lines",
       name: "Original", line: { color: "#ef4444", width: 1 }
     },
     {
-      x: t, y: recon, type: "scattergl", mode: "lines",
+      x: t, y: recon, type: "scatter", mode: "lines",
       name: "Reconstruction", line: { color: "#38bdf8", width: 1.5 }
     }
   ];
+
+  if (boundaries && boundaries.length > 0) {
+    boundaries.forEach((b, i) => {
+      trTime.push({
+        x: t.slice(b.idx0, b.idx1 + 1),
+        y: recon.slice(b.idx0, b.idx1 + 1),
+        type: "scatter", mode: "lines",
+        name: i % 2 === 0 ? "Segment A" : "Segment B",
+        line: { color: i % 2 === 0 ? "#10b981" : "#84cc16", width: 2.2 },
+        legendgroup: i % 2 === 0 ? "segA" : "segB",
+        showlegend: i < 2
+      });
+    });
+  }
 
   const lyTime = {
     uirevision: true,
@@ -31,8 +45,8 @@ function buildFftPlotlyConfig(st, t, origSignal, recon, freqs, power, boundaries
 
   if (boundaries && boundaries.length > 0) {
     const colors = [
-      "rgba(56, 189, 248, 0.16)",  // Light blue
-      "rgba(129, 140, 248, 0.16)"  // Light indigo
+      "rgba(16, 185, 129, 0.08)",  // Subtle Emerald
+      "rgba(132, 204, 22, 0.08)"   // Subtle Lime
     ];
     lyTime.shapes = boundaries.map((b, i) => ({
       type: "rect", xref: "x", yref: "paper",
