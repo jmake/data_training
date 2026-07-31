@@ -104,3 +104,28 @@ input[type="range"]::-moz-range-thumb {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-overlay p { color: var(--muted); font-size: .85rem; }
+
+/* ── COLLAPSIBLE SECTIONS ── */
+.section-body.collapsed {
+  display: none;
+}
+.section-toggle {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(129, 140, 248, 0.12);
+  color: #818cf8;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  order: 99;
+}
+.section-toggle:hover {
+  background: rgba(129, 140, 248, 0.25);
+  color: #fff;
+  border-color: rgba(129, 140, 248, 0.4);
+}
+

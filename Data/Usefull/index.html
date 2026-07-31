@@ -41,7 +41,9 @@
         <option value="iqr">IQR (N=3.0)</option>
         <option value="norm">Normalized (Unit)</option>
       </select>
+      <span class="section-toggle" data-target="r-acc-body">Show</span>
     </div>
+    <div id="r-acc-body" class="section-body collapsed">
     <div class="stats-inline" id="acc-stats-rowing"></div>
     <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title ct-mag">ACC Magnitude</span>
@@ -61,21 +63,29 @@
         <div id="r-az" class="plot-box small"></div>
       </div>
     </div>
+    </div>
   </div>
 
   <!-- HR section -->
   <div class="section" style="padding: 12px 16px 16px;">
-    <div class="section-header sh-hr">Heart Rate</div>
+    <div class="section-header sh-hr">Heart Rate
+      <span class="section-toggle" data-target="r-hr-body">Show</span>
+    </div>
+    <div id="r-hr-body" class="section-body collapsed">
     <div class="stats-inline" id="hr-stats-rowing"></div>
     <div class="chart-card">
       <span class="chart-title ct-hr">Heart Rate</span>
       <div id="r-hr" class="plot-box"></div>
     </div>
+    </div>
   </div>
 
   <!-- FFT Analysis section -->
   <div class="section" style="padding: 0 16px 24px;">
-    <div class="section-header sh-fft">Frequency Analysis</div>
+    <div class="section-header sh-fft">Frequency Analysis
+      <span class="section-toggle" data-target="r-fft-body">Show</span>
+    </div>
+    <div id="r-fft-body" class="section-body collapsed">
     <div class="fft-controls">
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">Signal</span>
@@ -189,6 +199,7 @@
         <div id="r-fft-aligned" class="plot-box" style="height: 220px;"></div>
       </div>
     </div>
+    </div>
   </div>
 </div>
 
@@ -203,7 +214,9 @@
         <option value="iqr">IQR (N=3.0)</option>
         <option value="norm">Normalized (Unit)</option>
       </select>
+      <span class="section-toggle" data-target="n-acc-body">Show</span>
     </div>
+    <div id="n-acc-body" class="section-body collapsed">
     <div class="stats-inline" id="acc-stats-running"></div>
     <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title ct-mag">ACC Magnitude</span>
@@ -223,21 +236,29 @@
         <div id="n-az" class="plot-box small"></div>
       </div>
     </div>
+    </div>
   </div>
 
   <!-- HR section -->
   <div class="section" style="padding: 12px 16px 16px;">
-    <div class="section-header sh-hr">Heart Rate</div>
+    <div class="section-header sh-hr">Heart Rate
+      <span class="section-toggle" data-target="n-hr-body">Show</span>
+    </div>
+    <div id="n-hr-body" class="section-body collapsed">
     <div class="stats-inline" id="hr-stats-running"></div>
     <div class="chart-card">
       <span class="chart-title ct-hr">Heart Rate</span>
       <div id="n-hr" class="plot-box"></div>
     </div>
+    </div>
   </div>
 
   <!-- FFT Analysis section -->
   <div class="section" style="padding: 0 16px 24px;">
-    <div class="section-header sh-fft">Frequency Analysis</div>
+    <div class="section-header sh-fft">Frequency Analysis
+      <span class="section-toggle" data-target="n-fft-body">Show</span>
+    </div>
+    <div id="n-fft-body" class="section-body collapsed">
     <div class="fft-controls">
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">Signal</span>
@@ -351,6 +372,7 @@
         <div id="n-fft-aligned" class="plot-box" style="height: 220px;"></div>
       </div>
     </div>
+    </div>
   </div>
 </div>
 
@@ -365,7 +387,9 @@
         <option value="iqr">IQR (N=3.0)</option>
         <option value="norm">Normalized (Unit)</option>
       </select>
+      <span class="section-toggle" data-target="w-acc-body">Show</span>
     </div>
+    <div id="w-acc-body" class="section-body collapsed">
     <div class="stats-inline" id="acc-stats-wallballs"></div>
     <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title ct-mag">ACC Magnitude</span>
@@ -385,21 +409,29 @@
         <div id="w-az" class="plot-box small"></div>
       </div>
     </div>
+    </div>
   </div>
 
   <!-- HR section -->
   <div class="section" style="padding: 12px 16px 16px;">
-    <div class="section-header sh-hr">Heart Rate</div>
+    <div class="section-header sh-hr">Heart Rate
+      <span class="section-toggle" data-target="w-hr-body">Show</span>
+    </div>
+    <div id="w-hr-body" class="section-body collapsed">
     <div class="stats-inline" id="hr-stats-wallballs"></div>
     <div class="chart-card">
       <span class="chart-title ct-hr">Heart Rate</span>
       <div id="w-hr" class="plot-box"></div>
     </div>
+    </div>
   </div>
 
   <!-- Frequency Analysis section -->
   <div class="section" style="padding: 0 16px 16px;">
-    <div class="section-header sh-fft">Frequency Analysis</div>
+    <div class="section-header sh-fft">Frequency Analysis
+      <span class="section-toggle" data-target="w-fft-body">Show</span>
+    </div>
+    <div id="w-fft-body" class="section-body collapsed">
     <div class="fft-controls">
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">Signal</span>
@@ -510,6 +542,7 @@
         <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Aligned Cycles Overlay</span>
         <div id="w-fft-aligned" class="plot-box" style="height: 220px;"></div>
       </div>
+    </div>
     </div>
   </div>
 </div>

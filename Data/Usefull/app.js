@@ -75,3 +75,22 @@ setInterval(async () => {
   const ok = await fetchSession(activeTab);
   if (ok && sessionCache[cacheKey(activeTab)]) renderIfVisible(activeTab);
 }, POLL_MS);
+
+// ── Wire up section toggle headers ──────────────────────────────────────────
+document.querySelectorAll(".section-toggle").forEach(toggleEl => {
+  toggleEl.addEventListener("click", () => {
+    const targetId = toggleEl.dataset.target;
+    const body = document.getElementById(targetId);
+    if (body.classList.contains("collapsed")) {
+      body.classList.remove("collapsed");
+      toggleEl.textContent = "Hide";
+      const tabName = targetId.split("-")[0]; // "r", "n", or "w"
+      const name = tabName === "r" ? "rowing" : (tabName === "n" ? "running" : "wallballs");
+      setTimeout(() => resizeTab(name), 30);
+    } else {
+      body.classList.add("collapsed");
+      toggleEl.textContent = "Show";
+    }
+  });
+});
+
