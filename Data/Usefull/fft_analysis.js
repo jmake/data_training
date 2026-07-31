@@ -1,9 +1,9 @@
 // ── FFT Analysis section ─────────────────────────────────────────────────────
 
 const fftState = {
-  rowing:    { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75 },
-  running:   { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75 },
-  wallballs: { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75 }
+  rowing:    { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75, segSep: 0.6 },
+  running:   { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75, segSep: 0.6 },
+  wallballs: { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75, segSep: 0.6 }
 };
 
 // Fetch data for FFT independently from the main ACC clean selector
@@ -111,7 +111,7 @@ function fftRenderCharts(name, t, origSignal) {
     if (L > 5 && L < reconRaw.length / 2) {
       let results;
       if (st.segMethod === "wavelet") {
-        results = segmentWavelet(reconRaw, L, fs, t);
+        results = segmentWavelet(reconRaw, L, fs, t, st.segSep);
         boundaries = results.boundaries;
         template = results.template;
       } else {
@@ -120,7 +120,7 @@ function fftRenderCharts(name, t, origSignal) {
         } else {
           template = extractTemplateMined(reconRaw, L);
         }
-        results = segmentSignalNCC(reconRaw, template, st.segThresh, fs, t);
+        results = segmentSignalNCC(reconRaw, template, st.segThresh, fs, t, st.segSep);
         boundaries = results.boundaries;
       }
 
@@ -346,6 +346,13 @@ function fftUpdateFilter(name) {
     document.getElementById(`fft-seg-thresh-val-${name}`).textContent = val.toFixed(2);
     fftUpdateFilter(name);
   });
+
+  document.getElementById(`fft-seg-sep-${name}`).addEventListener("input", e => {
+    const val = parseFloat(e.target.value);
+    st.segSep = val;
+    document.getElementById(`fft-seg-sep-val-${name}`).textContent = val.toFixed(2);
+    fftUpdateFilter(name);
+  });
 });
 
 // ── Wire up spectrum collapse titles ──────────────────────────────────────────
@@ -440,13 +447,13 @@ function calculateNCCPair(a, b) {
   return den > 0 ? num / den : 0;
 }
 
-function segmentSignalNCC(signal, template, thresh, fs, t) {
+function segmentSignalNCC(signal, template, thresh, fs, t, segSep = 0.6) {
   const N = signal.length;
   const L = template.length;
   const ncc = computeNCC(signal, template);
   
   const boundaries = [];
-  const minSeparation = Math.floor(0.6 * L);
+  const minSeparation = Math.floor(segSep * L);
   
   for (let i = 1; i < ncc.length - 1; i++) {
     if (ncc[i] >= thresh && ncc[i] > ncc[i - 1] && ncc[i] >= ncc[i + 1]) {
@@ -552,7 +559,7 @@ function rickerWavelet(t, s) {
   return (1 - r2) * Math.exp(-r2 / 2);
 }
 
-function segmentWavelet(signal, L, fs, t) {
+function segmentWavelet(signal, L, fs, t, segSep = 0.6) {
   const N = signal.length;
   const coefs = new Float64Array(N);
   const scale = Math.max(2, L / 3);
@@ -571,7 +578,7 @@ function segmentWavelet(signal, L, fs, t) {
   }
 
   const boundaries = [];
-  const minDist = Math.max(5, Math.round(0.6 * L));
+  const minDist = Math.max(5, Math.round(segSep * L));
   const candidates = [];
   for (let i = 1; i < N - 1; i++) {
     if (coefs[i] > 0 && coefs[i - 1] <= 0) {
