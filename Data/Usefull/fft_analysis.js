@@ -109,14 +109,20 @@ function fftRenderCharts(name, t, origSignal) {
   if (fdom > 0) {
     const L = Math.round(fs / fdom);
     if (L > 5 && L < reconRaw.length / 2) {
-      if (st.segMethod === "average") {
-        template = extractTemplateAverage(reconRaw, L);
+      let results;
+      if (st.segMethod === "wavelet") {
+        results = segmentWavelet(reconRaw, L, fs, t);
+        boundaries = results.boundaries;
+        template = results.template;
       } else {
-        template = extractTemplateMined(reconRaw, L);
+        if (st.segMethod === "average") {
+          template = extractTemplateAverage(reconRaw, L);
+        } else {
+          template = extractTemplateMined(reconRaw, L);
+        }
+        results = segmentSignalNCC(reconRaw, template, st.segThresh, fs, t);
+        boundaries = results.boundaries;
       }
-
-      const results = segmentSignalNCC(reconRaw, template, st.segThresh, fs, t);
-      boundaries = results.boundaries;
 
       // Extract and align cycles
       if (boundaries && boundaries.length > 0) {
@@ -538,4 +544,89 @@ function zScoreSignal(sig) {
   const sd = Math.sqrt(variance);
   if (sd === 0) return sig;
   return sig.map(v => (v - mean) / sd);
+}
+
+function rickerWavelet(t, s) {
+  const ratio = t / s;
+  const r2 = ratio * ratio;
+  return (1 - r2) * Math.exp(-r2 / 2);
+}
+
+function segmentWavelet(signal, L, fs, t) {
+  const N = signal.length;
+  const coefs = new Float64Array(N);
+  const scale = Math.max(2, L / 3);
+  const winSize = Math.round(3 * scale);
+
+  for (let i = 0; i < N; i++) {
+    let sum = 0;
+    for (let offset = -winSize; offset <= winSize; offset++) {
+      const idx = i + offset;
+      if (idx >= 0 && idx < N) {
+        const wt = rickerWavelet(offset, scale);
+        sum += signal[idx] * wt;
+      }
+    }
+    coefs[i] = sum;
+  }
+
+  const boundaries = [];
+  const minDist = Math.max(5, Math.round(0.6 * L));
+  const candidates = [];
+  for (let i = 1; i < N - 1; i++) {
+    if (coefs[i] > 0 && coefs[i - 1] <= 0) {
+      candidates.push(i);
+    }
+  }
+
+  const keptIndices = [];
+  for (const idx of candidates) {
+    let ok = true;
+    for (const kept of keptIndices) {
+      if (Math.abs(idx - kept) < minDist) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) {
+      keptIndices.push(idx);
+    }
+  }
+  keptIndices.sort((a, b) => a - b);
+
+  const segments = [];
+  for (let i = 0; i < keptIndices.length - 1; i++) {
+    const idx0 = keptIndices[i];
+    const idx1 = keptIndices[i + 1];
+    segments.push({
+      idx0: idx0,
+      idx1: idx1,
+      x0: t[idx0],
+      x1: t[idx1]
+    });
+  }
+
+  const count = segments.length;
+  let avgDuration = 0;
+  if (count > 0) {
+    avgDuration = segments.reduce((sum, seg) => sum + (seg.x1 - seg.x0), 0) / count;
+  }
+
+  const templateLength = 100;
+  const template = new Float64Array(templateLength);
+  const zSlices = [];
+  for (const seg of segments) {
+    const rawSeg = signal.slice(seg.idx0, seg.idx1);
+    const resampled = resampleSignal(rawSeg, templateLength);
+    zSlices.push(zScoreSignal(resampled));
+  }
+  if (zSlices.length > 0) {
+    for (let j = 0; j < templateLength; j++) {
+      let sum = 0;
+      for (let k = 0; k < zSlices.length; k++) sum += zSlices[k][j];
+      template[j] = sum / zSlices.length;
+    }
+  }
+
+  return { boundaries: segments, count, avgDuration, template };
 }
