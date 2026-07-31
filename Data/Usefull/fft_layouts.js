@@ -19,7 +19,7 @@ function buildFftPlotlyConfig(st, t, origSignal, recon, freqs, power, boundaries
   ];
 
   const lyTime = {
-    uirevision: `${st.signal}_${st.clean}`,
+    uirevision: true,
     paper_bgcolor: "transparent", plot_bgcolor: "transparent",
     margin: { l: 54, r: 14, t: 32, b: 36 },
     font: { family: "Inter, system-ui, sans-serif", color: "#64748b", size: 10 },
@@ -53,7 +53,7 @@ function buildFftPlotlyConfig(st, t, origSignal, recon, freqs, power, boundaries
   ];
 
   const lyFreq = {
-    uirevision: `${st.signal}_${st.clean}`,
+    uirevision: true,
     paper_bgcolor: "transparent", plot_bgcolor: "transparent",
     margin: { l: 54, r: 14, t: 32, b: 36 },
     font: { family: "Inter, system-ui, sans-serif", color: "#64748b", size: 10 },
