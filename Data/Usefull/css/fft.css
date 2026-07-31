@@ -18,6 +18,55 @@
   font-size: .7rem; color: #818cf8; min-width: 58px;
 }
 
+.fft-number-input {
+  background: #0a111f;
+  border: 1px solid #1e3a5f;
+  color: #818cf8;
+  font-size: .7rem; font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+  width: 48px;
+  text-align: center;
+  outline: none;
+  font-family: inherit;
+  transition: border-color .2s, color .2s;
+}
+.fft-number-input:hover,
+.fft-number-input:focus {
+  border-color: #38bdf8;
+  color: #e2e8f0;
+}
+.fft-number-input::-webkit-outer-spin-button,
+.fft-number-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.fft-number-input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.fft-unit-label {
+  font-size: .7rem;
+  color: var(--muted);
+  margin-left: 2px;
+}
+.chart-title-toggle {
+  cursor: pointer;
+  user-select: none;
+  transition: background .2s, color .2s;
+}
+.chart-title-toggle:hover {
+  background: rgba(129,140,248,.25) !important;
+  color: #fff !important;
+}
+
+.chart-card.collapsed {
+  height: 38px;
+}
+.chart-card.collapsed .plot-box {
+  display: none;
+}
+
 /* ── FFT Metrics scaling (80% size) ── */
 .fft-metrics-row .stat-card {
   padding: 8px 13px;

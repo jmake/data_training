@@ -49,8 +49,8 @@ async function fftRun(name) {
     const fmaxEl = document.getElementById(`fft-fmax-${name}`);
     fminEl.max = nyq; fminEl.value = 0;
     fmaxEl.max = nyq; fmaxEl.value = nyq;
-    document.getElementById(`fft-fmin-val-${name}`).textContent = "0.0 Hz";
-    document.getElementById(`fft-fmax-val-${name}`).textContent = `${nyq.toFixed(1)} Hz`;
+    document.getElementById(`fft-fmin-val-${name}`).value = 0.0;
+    document.getElementById(`fft-fmax-val-${name}`).value = parseFloat(nyq.toFixed(1));
   }
 
   // Apply Auto High Cut if active
@@ -60,7 +60,7 @@ async function fftRun(name) {
       st.fmax = val;
       const fmaxEl = document.getElementById(`fft-fmax-${name}`);
       fmaxEl.value = val;
-      document.getElementById(`fft-fmax-val-${name}`).textContent = `${val.toFixed(1)} Hz`;
+      document.getElementById(`fft-fmax-val-${name}`).value = parseFloat(val.toFixed(1));
     }
   }
 
@@ -257,28 +257,76 @@ function fftUpdateFilter(name) {
         st.fmax = val;
         const fmaxEl = document.getElementById(`fft-fmax-${name}`);
         fmaxEl.value = val;
-        document.getElementById(`fft-fmax-val-${name}`).textContent = `${val.toFixed(1)} Hz`;
+        document.getElementById(`fft-fmax-val-${name}`).value = parseFloat(val.toFixed(1));
         fftUpdateFilter(name);
       }
     }
   });
 
-  document.getElementById(`fft-fmin-${name}`).addEventListener("input", e => {
+  const fminSlider = document.getElementById(`fft-fmin-${name}`);
+  const fmaxSlider = document.getElementById(`fft-fmax-${name}`);
+  const fminNum = document.getElementById(`fft-fmin-val-${name}`);
+  const fmaxNum = document.getElementById(`fft-fmax-val-${name}`);
+
+  fminSlider.addEventListener("input", e => {
     let val = parseFloat(e.target.value);
     if (val >= st.fmax) { val = st.fmax - 0.1; e.target.value = val; }
     st.fmin = val;
-    document.getElementById(`fft-fmin-val-${name}`).textContent = `${val.toFixed(1)} Hz`;
+    fminNum.value = parseFloat(val.toFixed(1));
     fftUpdateFilter(name);
   });
 
-  document.getElementById(`fft-fmax-${name}`).addEventListener("input", e => {
+  fmaxSlider.addEventListener("input", e => {
     let val = parseFloat(e.target.value);
     if (val <= st.fmin) { val = st.fmin + 0.1; e.target.value = val; }
     st.fmax = val;
-    document.getElementById(`fft-fmax-val-${name}`).textContent = `${val.toFixed(1)} Hz`;
+    fmaxNum.value = parseFloat(val.toFixed(1));
     st.autocut = "";
     document.getElementById(`fft-autocut-${name}`).value = "";
     fftUpdateFilter(name);
+  });
+
+  const updateFromFminNum = () => {
+    let val = parseFloat(fminNum.value);
+    if (isNaN(val)) return;
+    const nyq = (st.result && st.result.freqs) ? st.result.freqs[st.result.freqs.length - 1] : 100;
+    if (val < 0) val = 0;
+    if (val > nyq) val = nyq;
+    if (val >= st.fmax) { val = st.fmax - 0.1; }
+    fminNum.value = parseFloat(val.toFixed(1));
+    st.fmin = val;
+    fminSlider.value = val;
+    fftUpdateFilter(name);
+  };
+
+  const updateFromFmaxNum = () => {
+    let val = parseFloat(fmaxNum.value);
+    if (isNaN(val)) return;
+    const nyq = (st.result && st.result.freqs) ? st.result.freqs[st.result.freqs.length - 1] : 100;
+    if (val < 0) val = 0;
+    if (val > nyq) val = nyq;
+    if (val <= st.fmin) { val = st.fmin + 0.1; }
+    fmaxNum.value = parseFloat(val.toFixed(1));
+    st.fmax = val;
+    fmaxSlider.value = val;
+    st.autocut = "";
+    document.getElementById(`fft-autocut-${name}`).value = "";
+    fftUpdateFilter(name);
+  };
+
+  fminNum.addEventListener("change", updateFromFminNum);
+  fminNum.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      updateFromFminNum();
+      fminNum.blur();
+    }
+  });
+  fmaxNum.addEventListener("change", updateFromFmaxNum);
+  fmaxNum.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      updateFromFmaxNum();
+      fmaxNum.blur();
+    }
   });
 
   document.getElementById(`fft-seg-method-${name}`).addEventListener("change", e => {
@@ -291,6 +339,29 @@ function fftUpdateFilter(name) {
     st.segThresh = val;
     document.getElementById(`fft-seg-thresh-val-${name}`).textContent = val.toFixed(2);
     fftUpdateFilter(name);
+  });
+});
+
+// ── Wire up spectrum collapse titles ──────────────────────────────────────────
+document.querySelectorAll(".chart-title-toggle").forEach(titleEl => {
+  titleEl.addEventListener("click", () => {
+    const activity = titleEl.dataset.activity;
+    const targetId = titleEl.dataset.target;
+    const card = document.getElementById(`fft-spectrum-card-${activity}`);
+    const plotEl = document.getElementById(targetId);
+    
+    if (card.classList.contains("collapsed")) {
+      card.classList.remove("collapsed");
+      titleEl.textContent = "Spectrum";
+      setTimeout(() => {
+        if (plotEl && plotEl.layout) {
+          Plotly.Plots.resize(plotEl);
+        }
+      }, 30);
+    } else {
+      card.classList.add("collapsed");
+      titleEl.textContent = "Show";
+    }
   });
 });
 

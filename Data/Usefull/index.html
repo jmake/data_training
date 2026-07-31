@@ -106,14 +106,16 @@
         <span class="fft-ctrl-label">Low cut</span>
         <div class="fft-slider-wrap">
           <input type="range" id="fft-fmin-rowing" min="0" max="100" value="0" step="0.1">
-          <span id="fft-fmin-val-rowing" class="fft-slider-val">0.0 Hz</span>
+          <input type="number" id="fft-fmin-val-rowing" class="fft-number-input" min="0" max="100" step="0.1" value="0">
+          <span class="fft-unit-label">Hz</span>
         </div>
       </div>
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">High cut</span>
         <div class="fft-slider-wrap">
           <input type="range" id="fft-fmax-rowing" min="0" max="100" value="100" step="0.1">
-          <span id="fft-fmax-val-rowing" class="fft-slider-val">100.0 Hz</span>
+          <input type="number" id="fft-fmax-val-rowing" class="fft-number-input" min="0" max="100" step="0.1" value="100">
+          <span class="fft-unit-label">Hz</span>
         </div>
       </div>
     </div>
@@ -121,13 +123,9 @@
       <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Time Domain</span>
       <div id="r-fft-time" class="plot-box"></div>
     </div>
-    <div class="chart-card" style="margin-bottom: 12px;">
-      <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Spectrum</span>
-      <div id="r-fft-freq" class="plot-box"></div>
-    </div>
     <div class="section" style="margin-top: 16px;">
       <div class="section-header sh-fft">Filter Metrics</div>
-      <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+      <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; align-items: flex-start;">
         <div class="stat-card">
           <div class="stat-label">Preserved Energy</div>
           <div class="stat-value"><span id="fft-energy-rowing">100.0</span><span class="stat-unit">%</span></div>
@@ -135,6 +133,10 @@
         <div class="stat-card">
           <div class="stat-label">Noise Reduction</div>
           <div class="stat-value"><span id="fft-noise-rowing">0.0</span><span class="stat-unit">%</span></div>
+        </div>
+        <div class="chart-card collapsed" id="fft-spectrum-card-rowing" style="margin-bottom: 0; flex: 1; min-width: 250px;">
+          <span class="chart-title chart-title-toggle" data-target="r-fft-freq" data-activity="rowing" style="background:rgba(129,140,248,.12);color:#818cf8;">Show</span>
+          <div id="r-fft-freq" class="plot-box"></div>
         </div>
       </div>
     </div>
@@ -258,14 +260,16 @@
         <span class="fft-ctrl-label">Low cut</span>
         <div class="fft-slider-wrap">
           <input type="range" id="fft-fmin-running" min="0" max="100" value="0" step="0.1">
-          <span id="fft-fmin-val-running" class="fft-slider-val">0.0 Hz</span>
+          <input type="number" id="fft-fmin-val-running" class="fft-number-input" min="0" max="100" step="0.1" value="0">
+          <span class="fft-unit-label">Hz</span>
         </div>
       </div>
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">High cut</span>
         <div class="fft-slider-wrap">
           <input type="range" id="fft-fmax-running" min="0" max="100" value="100" step="0.1">
-          <span id="fft-fmax-val-running" class="fft-slider-val">100.0 Hz</span>
+          <input type="number" id="fft-fmax-val-running" class="fft-number-input" min="0" max="100" step="0.1" value="100">
+          <span class="fft-unit-label">Hz</span>
         </div>
       </div>
     </div>
@@ -273,13 +277,9 @@
       <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Time Domain</span>
       <div id="n-fft-time" class="plot-box"></div>
     </div>
-    <div class="chart-card" style="margin-bottom: 12px;">
-      <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Spectrum</span>
-      <div id="n-fft-freq" class="plot-box"></div>
-    </div>
     <div class="section" style="margin-top: 16px;">
       <div class="section-header sh-fft">Filter Metrics</div>
-      <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+      <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; align-items: flex-start;">
         <div class="stat-card">
           <div class="stat-label">Preserved Energy</div>
           <div class="stat-value"><span id="fft-energy-running">100.0</span><span class="stat-unit">%</span></div>
@@ -287,6 +287,10 @@
         <div class="stat-card">
           <div class="stat-label">Noise Reduction</div>
           <div class="stat-value"><span id="fft-noise-running">0.0</span><span class="stat-unit">%</span></div>
+        </div>
+        <div class="chart-card collapsed" id="fft-spectrum-card-running" style="margin-bottom: 0; flex: 1; min-width: 250px;">
+          <span class="chart-title chart-title-toggle" data-target="n-fft-freq" data-activity="running" style="background:rgba(129,140,248,.12);color:#818cf8;">Show</span>
+          <div id="n-fft-freq" class="plot-box"></div>
         </div>
       </div>
     </div>
@@ -410,18 +414,20 @@
         <span class="fft-ctrl-label">Low cut</span>
         <div class="fft-slider-wrap">
           <input type="range" id="fft-fmin-wallballs" min="0" max="100" value="0" step="0.1">
-          <span id="fft-fmin-val-wallballs" class="fft-slider-val">0.0 Hz</span>
+          <input type="number" id="fft-fmin-val-wallballs" class="fft-number-input" min="0" max="100" step="0.1" value="0">
+          <span class="fft-unit-label">Hz</span>
         </div>
       </div>
       <div class="fft-ctrl-group">
         <span class="fft-ctrl-label">High cut</span>
         <div class="fft-slider-wrap">
           <input type="range" id="fft-fmax-wallballs" min="0" max="100" value="100" step="0.1">
-          <span id="fft-fmax-val-wallballs" class="fft-slider-val">100.0 Hz</span>
+          <input type="number" id="fft-fmax-val-wallballs" class="fft-number-input" min="0" max="100" step="0.1" value="100">
+          <span class="fft-unit-label">Hz</span>
         </div>
       </div>
     </div>
-    <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+    <div class="fft-metrics-row" style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: flex-start;">
       <div class="stat-card">
         <div class="stat-label">Preserved Energy</div>
         <div class="stat-value"><span id="fft-energy-wallballs">100.0</span><span class="stat-unit">%</span></div>
@@ -430,14 +436,14 @@
         <div class="stat-label">Noise Reduction</div>
         <div class="stat-value"><span id="fft-noise-wallballs">0.0</span><span class="stat-unit">%</span></div>
       </div>
+      <div class="chart-card collapsed" id="fft-spectrum-card-wallballs" style="margin-bottom: 0; flex: 1; min-width: 250px;">
+        <span class="chart-title chart-title-toggle" data-target="w-fft-freq" data-activity="wallballs" style="background:rgba(129,140,248,.12);color:#818cf8;">Show</span>
+        <div id="w-fft-freq" class="plot-box"></div>
+      </div>
     </div>
     <div class="chart-card" style="margin-bottom: 12px;">
       <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Time Domain</span>
       <div id="w-fft-time" class="plot-box"></div>
-    </div>
-    <div class="chart-card" style="margin-bottom: 12px;">
-      <span class="chart-title" style="background:rgba(129,140,248,.12);color:#818cf8;">Spectrum</span>
-      <div id="w-fft-freq" class="plot-box"></div>
     </div>
     
     <!-- Cycle Segmentation Section -->
