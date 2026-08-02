@@ -11,6 +11,8 @@ def ensure_package(import_name, pip_name=None):
 ensure_package("numpy") 
 ensure_package("pandas") 
 ensure_package("sklearn", "scikit-learn") 
+ensure_package("ruptures") 
+
 
 
 import os
@@ -209,6 +211,99 @@ class Handler(BaseHTTPRequestHandler):
 
         if path.startswith("/data/"):
             name = path[6:]
+            if name.startswith("segment/"):
+                session_name = name[8:]
+                if session_name not in SESSIONS:
+                    self.send_response(404); self.end_headers(); return
+                clean = params.get("clean", ["raw"])[0]
+                if clean not in CLEANERS:
+                    clean = "raw"
+                sig_name = params.get("signal", ["mag"])[0]
+                sess = SESSIONS[session_name]
+                acc_path = os.path.join(BASE, sess["acc"])
+                acc_raw = read_acc(acc_path)
+                acc = CLEANERS.get(clean, CLEANERS["raw"])(acc_raw)
+                if sig_name not in acc:
+                    sig_name = "mag"
+                signal = acc[sig_name]
+                t_arr = acc["t"]
+                
+                # Slicing based on zoom range
+                t_start_val = params.get("t_start", [None])[0]
+                t_end_val = params.get("t_end", [None])[0]
+                idx_start = 0
+                idx_end = len(t_arr) - 1
+                
+                if t_start_val is not None and t_start_val != "null" and t_start_val != "":
+                    try:
+                        t_s = float(t_start_val)
+                        idx_start = next((i for i, val in enumerate(t_arr) if val >= t_s), 0)
+                    except ValueError:
+                        pass
+                
+                if t_end_val is not None and t_end_val != "null" and t_end_val != "":
+                    try:
+                        t_e = float(t_end_val)
+                        idx_end = next((i for i in range(len(t_arr)-1, -1, -1) if t_arr[i] <= t_e), len(t_arr) - 1)
+                    except ValueError:
+                        pass
+                
+                if idx_end < idx_start:
+                    idx_end = idx_start
+                
+                sliced_signal = signal[idx_start : idx_end + 1]
+                sliced_t = t_arr[idx_start : idx_end + 1]
+                
+                try:
+                    pen_val = float(params.get("pen", [10.0])[0])
+                except ValueError:
+                    pen_val = 10.0
+                
+                import ruptures as rpt
+                import numpy as np
+                points = np.array(sliced_signal)
+                
+                try:
+                    if len(points) > 10:
+                        algo = rpt.Pelt(model="rbf").fit(points)
+                        bkps = algo.predict(pen=pen_val)
+                    else:
+                        bkps = [len(points)]
+                except MemoryError:
+                    payload = json.dumps({
+                        "error": "MemoryError",
+                        "message": "Signal range is too long for Ruptures RBF. Please zoom in to a shorter range first."
+                    }).encode()
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.send_header("Content-Length", str(len(payload)))
+                    self.end_headers()
+                    self.wfile.write(payload)
+                    return
+                
+                segments = []
+                prev_idx = 0
+                for bk in bkps:
+                    idx0 = prev_idx
+                    idx1 = min(bk, len(points) - 1)
+                    if idx1 > idx0:
+                        segments.append({
+                            "idx0": int(idx0 + idx_start),
+                            "idx1": int(idx1 + idx_start),
+                            "x0": float(sliced_t[idx0]),
+                            "x1": float(sliced_t[idx1])
+                        })
+                    prev_idx = idx1
+                payload = json.dumps({"boundaries": segments}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
+
             if name not in SESSIONS:
                 self.send_response(404); self.end_headers(); return
 

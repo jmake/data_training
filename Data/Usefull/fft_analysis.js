@@ -1,10 +1,12 @@
 // ── FFT Analysis section ─────────────────────────────────────────────────────
 
 const fftState = {
-  rowing:    { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75, segSep: 0.6 },
-  running:   { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75, segSep: 0.6 },
+  rowing: { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75, segSep: 0.6 },
+  running: { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75, segSep: 0.6 },
   wallballs: { signal: "mag", clean: "iqr", autocut: "harmonics", fmin: 0, fmax: null, result: null, inited: false, segMethod: "mined", segThresh: 0.75, segSep: 0.6 }
 };
+
+let activeAbortController = null;
 
 // Fetch data for FFT independently from the main ACC clean selector
 async function fftFetch(name, clean) {
@@ -64,10 +66,10 @@ async function fftRun(name) {
     }
   }
 
-  fftRenderCharts(name, t, signal);
+  await fftRenderCharts(name, t, signal);
 }
 
-function fftRenderCharts(name, t, origSignal) {
+async function fftRenderCharts(name, t, origSignal) {
   const st = fftState[name];
   if (!st.result) return;
 
@@ -91,8 +93,8 @@ function fftRenderCharts(name, t, origSignal) {
 
   // Calculate Noise Reduction (SD of orig zero-mean vs SD of recon zero-mean)
   const zeroMeanSignal = Array.from(origSignal).map(v => v - mean);
-  const sdOrig = Math.sqrt(zeroMeanSignal.reduce((sum, v) => sum + v*v, 0) / zeroMeanSignal.length);
-  const sdRecon = Math.sqrt(reconRaw.reduce((sum, v) => sum + v*v, 0) / reconRaw.length);
+  const sdOrig = Math.sqrt(zeroMeanSignal.reduce((sum, v) => sum + v * v, 0) / zeroMeanSignal.length);
+  const sdRecon = Math.sqrt(reconRaw.reduce((sum, v) => sum + v * v, 0) / reconRaw.length);
   const pctNoiseReduction = sdOrig > 0 ? ((sdOrig - sdRecon) / sdOrig) * 100 : 0;
 
   // Update UI Elements
@@ -110,7 +112,109 @@ function fftRenderCharts(name, t, origSignal) {
     const L = Math.round(fs / fdom);
     if (L > 5 && L < reconRaw.length / 2) {
       let results;
-      if (st.segMethod === "wavelet") {
+      if (st.segMethod === "ruptures") {
+        // Calculate number of samples in the visible zoom range
+        let idxStart = 0;
+        let idxEnd = reconRaw.length - 1;
+        if (st.zoomMin !== null && st.zoomMin !== undefined) {
+          const idx = t.findIndex(v => v >= st.zoomMin);
+          if (idx !== -1) idxStart = idx;
+        }
+        if (st.zoomMax !== null && st.zoomMax !== undefined) {
+          const idx = t.findIndex(v => v >= st.zoomMax);
+          if (idx !== -1) idxEnd = idx;
+        }
+        const N_zoom = idxEnd - idxStart + 1;
+        
+        // Memory estimate check (threshold = 1.0 GB ~ 16,000 samples)
+        if (N_zoom > 16000) {
+          const memGB = (N_zoom * N_zoom * 4 / 1e9).toFixed(1);
+          const proceed = confirm(`This signal range contains ${N_zoom.toLocaleString()} samples and requires approximately ${memGB} GB of RAM to run Ruptures. This could freeze or crash the server. Do you want to proceed?`);
+          if (!proceed) {
+            document.getElementById(`fft-seg-method-${name}`).value = "mined";
+            st.segMethod = "mined";
+            setTimeout(() => fftUpdateFilter(name), 10);
+            return;
+          }
+        }
+
+        const penVal = (st.segSep * 15.0).toFixed(1);
+        let url = `/data/segment/${name}?clean=${st.clean}&signal=${st.signal}&pen=${penVal}`;
+        if (st.zoomMin !== null && st.zoomMin !== undefined) {
+          url += `&t_start=${st.zoomMin}`;
+        }
+        if (st.zoomMax !== null && st.zoomMax !== undefined) {
+          url += `&t_end=${st.zoomMax}`;
+        }
+
+        const overlay = document.getElementById("calc-overlay");
+        const cancelBtn = document.getElementById("calc-cancel-btn");
+        overlay.classList.remove("hidden");
+
+        if (activeAbortController) {
+          activeAbortController.abort();
+        }
+        activeAbortController = new AbortController();
+        const { signal: abortSignal } = activeAbortController;
+
+        const cancelHandler = () => {
+          if (activeAbortController) {
+            activeAbortController.abort();
+          }
+          overlay.classList.add("hidden");
+          document.getElementById(`fft-seg-method-${name}`).value = "mined";
+          st.segMethod = "mined";
+          fftUpdateFilter(name);
+        };
+        cancelBtn.onclick = cancelHandler;
+
+        try {
+          const res = await fetch(url, { signal: abortSignal });
+          const resData = await res.json();
+          overlay.classList.add("hidden");
+          activeAbortController = null;
+
+          if (resData.error) {
+            alert(resData.message);
+            document.getElementById(`fft-seg-method-${name}`).value = "mined";
+            st.segMethod = "mined";
+            results = { boundaries: [], count: 0, avgDuration: 0, template: new Float64Array(100) };
+            setTimeout(() => fftUpdateFilter(name), 10);
+          } else {
+            boundaries = resData.boundaries;
+            const count = boundaries.length;
+            let avgDuration = 0;
+            if (count > 0) {
+              avgDuration = boundaries.reduce((sum, seg) => sum + (seg.x1 - seg.x0), 0) / count;
+            }
+            const templateLength = 100;
+            template = new Float64Array(templateLength);
+            const zSlices = [];
+            for (const seg of boundaries) {
+              const rawSeg = reconRaw.slice(seg.idx0, seg.idx1);
+              const resampled = resampleSignal(rawSeg, templateLength);
+              zSlices.push(zScoreSignal(resampled));
+            }
+            if (zSlices.length > 0) {
+              for (let j = 0; j < templateLength; j++) {
+                let sum = 0;
+                for (let k = 0; k < zSlices.length; k++) sum += zSlices[k][j];
+                template[j] = sum / zSlices.length;
+              }
+            }
+            results = { boundaries, count, avgDuration, template };
+          }
+        } catch (err) {
+          overlay.classList.add("hidden");
+          activeAbortController = null;
+          if (err.name === "AbortError") {
+            console.log("Ruptures calculation aborted by user.");
+            return;
+          }
+          console.error("Ruptures fetch failed:", err);
+          results = { boundaries: [], count: 0, avgDuration: 0, template: new Float64Array(100) };
+        }
+      } else if (st.segMethod === "wavelet") {
         results = segmentWavelet(reconRaw, L, fs, t, st.segSep);
         boundaries = results.boundaries;
         template = results.template;
@@ -161,6 +265,27 @@ function fftRenderCharts(name, t, origSignal) {
   if (!st.inited) {
     Plotly.newPlot(timeDivId, trTime, lyTime, PLOTLY_CFG);
     Plotly.newPlot(freqDivId, trFreq, lyFreq, PLOTLY_CFG);
+    
+    // Zoom/pan listener to slice Ruptures and calculate visible statistics
+    const timeEl = document.getElementById(timeDivId);
+    if (timeEl) {
+      timeEl.on("plotly_relayout", ev => {
+        let changed = false;
+        if (ev["xaxis.autorange"]) {
+          st.zoomMin = null;
+          st.zoomMax = null;
+          changed = true;
+        } else if (ev["xaxis.range[0]"] !== undefined) {
+          st.zoomMin = ev["xaxis.range[0]"];
+          st.zoomMax = ev["xaxis.range[1]"];
+          changed = true;
+        }
+        if (changed) {
+          fftUpdateFilter(name);
+        }
+      });
+    }
+    
     st.inited = true;
   } else {
     Plotly.react(timeDivId, trTime, lyTime, PLOTLY_CFG);
@@ -231,12 +356,12 @@ function updateSignalOptions(name) {
 }
 
 // Fast path: only update reconstruction + band shading (no re-FFT)
-function fftUpdateFilter(name) {
+async function fftUpdateFilter(name) {
   const st = fftState[name];
   if (!st.result) return;
   const data = sessionCache[`${name}_${st.clean}`];
   if (!data) return;
-  fftRenderCharts(name, data.acc.t, data.acc[st.signal]);
+  await fftRenderCharts(name, data.acc.t, data.acc[st.signal]);
 }
 
 // ── Wire up controls ──────────────────────────────────────────────────────────
@@ -362,7 +487,7 @@ document.querySelectorAll(".chart-title-toggle").forEach(titleEl => {
     const targetId = titleEl.dataset.target;
     const card = document.getElementById(`fft-spectrum-card-${activity}`);
     const plotEl = document.getElementById(targetId);
-    
+
     if (card.classList.contains("collapsed")) {
       card.classList.remove("collapsed");
       titleEl.textContent = "Spectrum";
@@ -398,7 +523,7 @@ function extractTemplateAverage(signal, L) {
   const template = new Float64Array(L);
   const numSlices = Math.floor(signal.length / L);
   if (numSlices === 0) return template;
-  
+
   for (let i = 0; i < numSlices; i++) {
     const start = i * L;
     for (let j = 0; j < L; j++) {
@@ -415,7 +540,7 @@ function extractTemplateMined(signal, L) {
   const step = Math.max(1, Math.floor(L / 4));
   let bestIdx = 0;
   let maxCorr = -2;
-  
+
   for (let i = 0; i <= signal.length - 2 * L; i += step) {
     const seg1 = signal.slice(i, i + L);
     const seg2 = signal.slice(i + L, i + 2 * L);
@@ -432,7 +557,7 @@ function calculateNCCPair(a, b) {
   const L = a.length;
   const meanA = a.reduce((sum, v) => sum + v, 0) / L;
   const meanB = b.reduce((sum, v) => sum + v, 0) / L;
-  
+
   let num = 0;
   let varA = 0;
   let varB = 0;
@@ -451,10 +576,10 @@ function segmentSignalNCC(signal, template, thresh, fs, t, segSep = 0.6) {
   const N = signal.length;
   const L = template.length;
   const ncc = computeNCC(signal, template);
-  
+
   const boundaries = [];
   const minSeparation = Math.floor(segSep * L);
-  
+
   for (let i = 1; i < ncc.length - 1; i++) {
     if (ncc[i] >= thresh && ncc[i] > ncc[i - 1] && ncc[i] >= ncc[i + 1]) {
       if (boundaries.length === 0 || (i - boundaries[boundaries.length - 1].idx) >= minSeparation) {
@@ -462,7 +587,7 @@ function segmentSignalNCC(signal, template, thresh, fs, t, segSep = 0.6) {
       }
     }
   }
-  
+
   const count = boundaries.length;
   let avgDuration = 0;
   if (count > 1) {
@@ -474,7 +599,7 @@ function segmentSignalNCC(signal, template, thresh, fs, t, segSep = 0.6) {
   } else if (count === 1) {
     avgDuration = L / fs;
   }
-  
+
   const segments = boundaries.map((b, i) => {
     const nextB = boundaries[i + 1];
     const endIdx = nextB ? nextB.idx : Math.min(b.idx + L, t.length - 1);
@@ -485,7 +610,7 @@ function segmentSignalNCC(signal, template, thresh, fs, t, segSep = 0.6) {
       idx1: endIdx
     };
   });
-  
+
   return {
     boundaries: segments,
     count: count,
@@ -497,18 +622,18 @@ function computeNCC(signal, template) {
   const N = signal.length;
   const L = template.length;
   const ncc = new Float64Array(N - L + 1);
-  
+
   const tMean = template.reduce((a, b) => a + b, 0) / L;
   const tZero = template.map(v => v - tMean);
-  const tVar = tZero.reduce((sum, v) => sum + v*v, 0);
+  const tVar = tZero.reduce((sum, v) => sum + v * v, 0);
   const tSD = Math.sqrt(tVar);
   if (tSD === 0) return ncc;
-  
+
   for (let i = 0; i <= N - L; i++) {
     let sSum = 0;
     for (let j = 0; j < L; j++) sSum += signal[i + j];
     const sMean = sSum / L;
-    
+
     let num = 0;
     let sVar = 0;
     for (let j = 0; j < L; j++) {
