@@ -327,6 +327,8 @@ class Handler(BaseHTTPRequestHandler):
         else:
             # Static file serving (index.html, style.css, app.js, ...)
             fname = "index.html" if path in ("/", "/index.html") else path.lstrip("/")
+            if fname == "wallballs":
+                fname = "wallballs.html"
             fpath = os.path.join(BASE, fname)
             ext   = os.path.splitext(fname)[1].lower()
 

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallballs Session Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(17, 24, 39, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-color: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-cyan: #06b6d4;
+      --accent-red: #ef4444;
+      --accent-purple: #8b5cf6;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 40px;
+      background: rgba(15, 23, 42, 0.9);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      background: linear-gradient(to right, #22d3ee, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .container {
+      flex: 1;
+      padding: 30px 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: calc(100% - 80px);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .controls-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 500;
+    }
+
+    .clean-select, .number-input {
+      background: #1e293b;
+      border: 1px solid var(--card-border);
+      color: var(--text-color);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .clean-select:focus, .number-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .number-input {
+      width: 80px;
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    .chart-header {
+      margin-bottom: 12px;
+      border-left: 3px solid var(--accent-cyan);
+      padding-left: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chart-header.hr {
+      border-left-color: var(--accent-red);
+    }
+
+    .chart-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--text-color);
+    }
+
+    .plot-box {
+      width: 100%;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Wallballs Session Analysis</h1>
+  </header>
+
+  <div class="container">
+    <div class="controls-card">
+      <div class="control-group">
+        <span class="control-label">Signal</span>
+        <select id="wb-signal" class="clean-select">
+          <option value="x">ACC X</option>
+          <option value="y">ACC Y</option>
+          <option value="z">ACC Z</option>
+          <option value="mag" selected>Magnitude</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <span class="control-label">Cleaning</span>
+        <select id="wb-clean" class="clean-select">
+          <option value="raw" selected>Raw</option>
+          <option value="iqr">IQR (N=3.0)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <span class="control-label">Low Cut</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <input type="number" id="wb-low-cut" class="number-input" min="0" max="50" step="0.1" value="0.2">
+          <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <span class="control-label">High Cut</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <input type="number" id="wb-high-cut" class="number-input" min="0" max="50" step="0.1" value="4.0">
+          <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time Domain Chart -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">Time Domain</span>
+      </div>
+      <div id="wb-time-plot" class="plot-box"></div>
+    </div>
+
+    <!-- HR Chart -->
+    <div class="chart-card">
+      <div class="chart-header hr">
+        <span class="chart-title">Heart Rate</span>
+      </div>
+      <div id="wb-hr-plot" class="plot-box"></div>
+    </div>
+  </div>
+
+  <script src="fft_lib.js"></script>
+  <script src="heart_rat.js"></script>
+  <script src="time_domain.js"></script>
+  <script>
+    // Global State
+    const state = {
+      signal: 'mag',
+      clean: 'raw',
+      lowCut: 0.2,
+      highCut: 4.0,
+      data: null
+    };
+
+    const PLOTLY_CFG = {
+      responsive: true,
+      displayModeBar: true,
+      modeBarButtonsToRemove: ['select2d', 'lasso2d'],
+      displaylogo: false
+    };
+
+    const baseLayout = (titleY) => ({
+      uirevision: true,
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'transparent',
+      margin: { l: 60, r: 20, t: 10, b: 40 },
+      font: { family: 'Outfit, sans-serif', color: '#9ca3af', size: 11 },
+      xaxis: {
+        title: { text: 'Time (s)', standoff: 6 },
+        gridcolor: 'rgba(255,255,255,0.04)',
+        zerolinecolor: 'rgba(255,255,255,0.08)'
+      },
+      yaxis: {
+        title: { text: titleY, standoff: 6 },
+        gridcolor: 'rgba(255,255,255,0.04)',
+        zerolinecolor: 'rgba(255,255,255,0.08)'
+      }
+    });
+
+    let etag = null;
+
+    async function fetchData() {
+      try {
+        const headers = {};
+        if (etag) {
+          headers['If-None-Match'] = etag;
+        }
+        const res = await fetch(`/data/wallballs?clean=${state.clean}`, { headers });
+        if (res.status === 304) {
+          return;
+        }
+        if (!res.ok) return;
+        etag = res.headers.get('ETag');
+        state.data = await res.json();
+        renderCharts();
+      } catch (err) {
+        console.error('Fetch error:', err);
+      }
+    }
+
+    function renderCharts() {
+      if (!state.data) return;
+      renderHeartRate(state.data);
+      renderTimeDomain(state.data, state);
+    }
+
+    // Event Listeners
+    document.getElementById('wb-signal').addEventListener('change', e => {
+      state.signal = e.target.value;
+      renderCharts();
+    });
+
+    document.getElementById('wb-clean').addEventListener('change', e => {
+      state.clean = e.target.value;
+      fetchData();
+    });
+
+    document.getElementById('wb-low-cut').addEventListener('input', e => {
+      state.lowCut = parseFloat(e.target.value) || 0;
+      renderCharts();
+    });
+
+    document.getElementById('wb-high-cut').addEventListener('input', e => {
+      state.highCut = parseFloat(e.target.value) || 0;
+      renderCharts();
+    });
+
+    // Initial Load & Poll
+    fetchData();
+    setInterval(fetchData, 3000);
+  </script>
+</body>
+</html>
