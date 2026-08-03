@@ -12,14 +12,14 @@ ensure_package("numpy")
 ensure_package("pandas") 
 ensure_package("sklearn", "scikit-learn") 
 ensure_package("ruptures") 
-
-
+ensure_package("scipy")
 
 import os
 import json
 import math
 from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from wallballs_analysis import HeartRateSegmenter
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -178,15 +178,15 @@ def compute_stats(acc, hr):
 
 # ── Cache + load ──────────────────────────────────────────────────────────────
 
-def load_session(name, clean="raw"):
+def load_session(name, clean="raw", seg_method="none", seg_mode="prominence"):
     sess      = SESSIONS[name]
     acc_path  = os.path.join(BASE, sess["acc"])
     hr_path   = os.path.join(BASE, sess["hr"])
 
     acc_mt    = os.path.getmtime(acc_path)
     hr_mt     = os.path.getmtime(hr_path)
-    cache_key = f"{name}_{clean}"
-    etag      = f'"{hash((acc_mt, hr_mt, clean))}"'
+    cache_key = f"{name}_{clean}_{seg_method}_{seg_mode}"
+    etag      = f'"{hash((acc_mt, hr_mt, clean, seg_method, seg_mode))}"'
 
     cached = _cache.get(cache_key)
     if cached and cached["etag"] == etag:
@@ -195,7 +195,22 @@ def load_session(name, clean="raw"):
     acc_raw = read_acc(acc_path)
     acc     = CLEANERS.get(clean, CLEANERS["raw"])(acc_raw)
     hr      = read_hr(hr_path)
-    payload = json.dumps({"acc": acc, "hr": hr, "stats": compute_stats(acc, hr)}).encode()
+
+    hr_peaks = []
+    hr_segments = []
+    if name == "wallballs" and seg_method == "peaks" and len(hr["bpm"]) > 2:
+        segmenter = HeartRateSegmenter(hr["t"], hr["bpm"])
+        t_start = acc["t"][0] if len(acc["t"]) > 0 else 0.0
+        t_end = acc["t"][-1] if len(acc["t"]) > 0 else 0.0
+        hr_peaks, hr_segments = segmenter.get_segments(seg_mode, t_start, t_end)
+
+    payload = json.dumps({
+        "acc": acc,
+        "hr": hr,
+        "stats": compute_stats(acc, hr),
+        "hr_peaks": hr_peaks,
+        "hr_segments": hr_segments
+    }).encode()
     _cache[cache_key] = {"etag": etag, "payload": payload}
     print(f"[cache] {cache_key} reloaded ({len(payload) // 1024} KB)")
     return payload, etag
@@ -310,8 +325,10 @@ class Handler(BaseHTTPRequestHandler):
             clean = params.get("clean", ["raw"])[0]
             if clean not in CLEANERS:
                 clean = "raw"
+            seg_method = params.get("seg_method", ["none"])[0]
+            seg_mode = params.get("seg_mode", ["prominence"])[0]
 
-            payload, etag = load_session(name, clean)
+            payload, etag = load_session(name, clean, seg_method, seg_mode)
 
             if self.headers.get("If-None-Match") == etag:
                 self.send_response(304); self.end_headers(); return

@@ -185,6 +185,20 @@
           <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
         </div>
       </div>
+      <div class="control-group">
+        <span class="control-label">Seg Method</span>
+        <select id="wb-seg-method" class="clean-select">
+          <option value="none" selected>None</option>
+          <option value="peaks">By Peaks</option>
+        </select>
+      </div>
+      <div class="control-group" id="wb-seg-mode-group" style="display: none;">
+        <span class="control-label">Seg Mode</span>
+        <select id="wb-seg-mode" class="clean-select">
+          <option value="prominence" selected>Standard Deviation</option>
+          <option value="distance">Dominant Frequency</option>
+        </select>
+      </div>
     </div>
 
     <!-- Time Domain Chart -->
@@ -214,6 +228,8 @@
       clean: 'raw',
       lowCut: 0.2,
       highCut: 4.0,
+      segMethod: 'none',
+      segMode: 'prominence',
       data: null
     };
 
@@ -251,7 +267,7 @@
         if (etag) {
           headers['If-None-Match'] = etag;
         }
-        const res = await fetch(`/data/wallballs?clean=${state.clean}`, { headers });
+        const res = await fetch(`/data/wallballs?clean=${state.clean}&seg_method=${state.segMethod}&seg_mode=${state.segMode}`, { headers });
         if (res.status === 304) {
           return;
         }
@@ -336,6 +352,22 @@
         state.highCut = parseFloat(e.target.value) || 0;
         renderCharts();
       }
+    });
+
+    document.getElementById('wb-seg-method').addEventListener('change', e => {
+      state.segMethod = e.target.value;
+      const modeGroup = document.getElementById('wb-seg-mode-group');
+      if (state.segMethod === 'peaks') {
+        modeGroup.style.display = 'flex';
+      } else {
+        modeGroup.style.display = 'none';
+      }
+      fetchData();
+    });
+
+    document.getElementById('wb-seg-mode').addEventListener('change', e => {
+      state.segMode = e.target.value;
+      fetchData();
     });
 
     // Initial Load & Poll
