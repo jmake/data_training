@@ -178,15 +178,15 @@ def compute_stats(acc, hr):
 
 # ── Cache + load ──────────────────────────────────────────────────────────────
 
-def load_session(name, clean="raw", seg_method="none", seg_mode="prominence"):
+def load_session(name, clean="raw", seg_method="none", seg_mode="prominence", hr_freq=None):
     sess      = SESSIONS[name]
     acc_path  = os.path.join(BASE, sess["acc"])
     hr_path   = os.path.join(BASE, sess["hr"])
 
     acc_mt    = os.path.getmtime(acc_path)
     hr_mt     = os.path.getmtime(hr_path)
-    cache_key = f"{name}_{clean}_{seg_method}_{seg_mode}"
-    etag      = f'"{hash((acc_mt, hr_mt, clean, seg_method, seg_mode))}"'
+    cache_key = f"{name}_{clean}_{seg_method}_{seg_mode}_{hr_freq}"
+    etag      = f'"{hash((acc_mt, hr_mt, clean, seg_method, seg_mode, hr_freq))}"'
 
     cached = _cache.get(cache_key)
     if cached and cached["etag"] == etag:
@@ -198,18 +198,20 @@ def load_session(name, clean="raw", seg_method="none", seg_mode="prominence"):
 
     hr_peaks = []
     hr_segments = []
+    hr_dom_freq = 0.0
     if name == "wallballs" and seg_method == "peaks" and len(hr["bpm"]) > 2:
         segmenter = HeartRateSegmenter(hr["t"], hr["bpm"])
         t_start = acc["t"][0] if len(acc["t"]) > 0 else 0.0
         t_end = acc["t"][-1] if len(acc["t"]) > 0 else 0.0
-        hr_peaks, hr_segments = segmenter.get_segments(seg_mode, t_start, t_end)
+        hr_peaks, hr_segments, hr_dom_freq = segmenter.get_segments(seg_mode, t_start, t_end, hr_freq)
 
     payload = json.dumps({
         "acc": acc,
         "hr": hr,
         "stats": compute_stats(acc, hr),
         "hr_peaks": hr_peaks,
-        "hr_segments": hr_segments
+        "hr_segments": hr_segments,
+        "hr_dom_freq": hr_dom_freq
     }).encode()
     _cache[cache_key] = {"etag": etag, "payload": payload}
     print(f"[cache] {cache_key} reloaded ({len(payload) // 1024} KB)")
@@ -327,8 +329,16 @@ class Handler(BaseHTTPRequestHandler):
                 clean = "raw"
             seg_method = params.get("seg_method", ["none"])[0]
             seg_mode = params.get("seg_mode", ["prominence"])[0]
+            
+            hr_freq_val = params.get("hr_freq", [None])[0]
+            hr_freq = None
+            if hr_freq_val and hr_freq_val != "null" and hr_freq_val != "":
+                try:
+                    hr_freq = float(hr_freq_val)
+                except ValueError:
+                    pass
 
-            payload, etag = load_session(name, clean, seg_method, seg_mode)
+            payload, etag = load_session(name, clean, seg_method, seg_mode, hr_freq)
 
             if self.headers.get("If-None-Match") == etag:
                 self.send_response(304); self.end_headers(); return
