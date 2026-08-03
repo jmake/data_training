@@ -154,6 +154,7 @@
   </header>
 
   <div class="container">
+    <!-- Signal & Filtering Controls -->
     <div class="controls-card">
       <div class="control-group">
         <span class="control-label">Signal</span>
@@ -174,7 +175,7 @@
       <div class="control-group">
         <span class="control-label">Low Cut</span>
         <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" id="wb-low-cut" class="number-input" min="0" max="50" step="0.1" value="0.2">
+          <input type="number" id="wb-low-cut" class="number-input" min="0" max="50" step="0.1" value="0">
           <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
         </div>
       </div>
@@ -185,6 +186,10 @@
           <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
         </div>
       </div>
+    </div>
+
+    <!-- Hierarchical Segmentation Controls -->
+    <div class="controls-card">
       <div class="control-group">
         <span class="control-label">Seg Method</span>
         <select id="wb-seg-method" class="clean-select">
@@ -195,8 +200,8 @@
       <div class="control-group" id="wb-seg-mode-group" style="display: none;">
         <span class="control-label">Seg Mode</span>
         <select id="wb-seg-mode" class="clean-select">
-          <option value="prominence" selected>Standard Deviation</option>
-          <option value="distance">Dominant Frequency</option>
+          <option value="prominence">Standard Deviation</option>
+          <option value="distance" selected>Dominant Frequency</option>
         </select>
       </div>
     </div>
@@ -226,10 +231,10 @@
     const state = {
       signal: 'mag',
       clean: 'raw',
-      lowCut: 0.2,
+      lowCut: 0,
       highCut: 4.0,
       segMethod: 'none',
-      segMode: 'prominence',
+      segMode: 'distance',
       data: null
     };
 
@@ -359,6 +364,8 @@
       const modeGroup = document.getElementById('wb-seg-mode-group');
       if (state.segMethod === 'peaks') {
         modeGroup.style.display = 'flex';
+        document.getElementById('wb-seg-mode').value = 'distance';
+        state.segMode = 'distance';
       } else {
         modeGroup.style.display = 'none';
       }
