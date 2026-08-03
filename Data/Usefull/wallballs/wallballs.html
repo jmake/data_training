@@ -104,6 +104,16 @@
       width: 80px;
     }
 
+    /* Hide HTML5 number spinner arrows */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+
     .chart-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -194,9 +204,9 @@
     </div>
   </div>
 
-  <script src="fft_lib.js"></script>
-  <script src="heart_rat.js"></script>
-  <script src="time_domain.js"></script>
+  <script src="/fft_lib.js"></script>
+  <script src="/wallballs/heart_rat.js"></script>
+  <script src="/wallballs/time_domain.js"></script>
   <script>
     // Global State
     const state = {
@@ -270,14 +280,18 @@
       fetchData();
     });
 
-    document.getElementById('wb-low-cut').addEventListener('input', e => {
-      state.lowCut = parseFloat(e.target.value) || 0;
-      renderCharts();
+    document.getElementById('wb-low-cut').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        state.lowCut = parseFloat(e.target.value) || 0;
+        renderCharts();
+      }
     });
 
-    document.getElementById('wb-high-cut').addEventListener('input', e => {
-      state.highCut = parseFloat(e.target.value) || 0;
-      renderCharts();
+    document.getElementById('wb-high-cut').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        state.highCut = parseFloat(e.target.value) || 0;
+        renderCharts();
+      }
     });
 
     // Initial Load & Poll
