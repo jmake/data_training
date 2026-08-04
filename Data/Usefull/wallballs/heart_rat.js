@@ -12,6 +12,7 @@ function renderHeartRate(data) {
   const el = document.getElementById('wb-hr-plot');
   const xa = el && el._fullLayout && el._fullLayout.xaxis;
   let layout = baseLayout('BPM');
+  layout.showlegend = false;
   if (xa && !xa.autorange) {
     layout = { ...layout, xaxis: { ...layout.xaxis, range: [xa.range[0], xa.range[1]], autorange: false } };
   }

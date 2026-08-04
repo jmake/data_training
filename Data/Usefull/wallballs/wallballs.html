@@ -168,8 +168,8 @@
       <div class="control-group">
         <span class="control-label">Cleaning</span>
         <select id="wb-clean" class="clean-select">
-          <option value="raw" selected>Raw</option>
-          <option value="iqr">IQR (N=3.0)</option>
+          <option value="raw">Raw</option>
+          <option value="iqr" selected>IQR (N=3.0)</option>
         </select>
       </div>
       <div class="control-group">
@@ -193,18 +193,18 @@
       <div class="control-group">
         <span class="control-label">Seg Method</span>
         <select id="wb-seg-method" class="clean-select">
-          <option value="none" selected>None</option>
-          <option value="peaks">By Peaks</option>
+          <option value="none">None</option>
+          <option value="peaks" selected>By Peaks</option>
         </select>
       </div>
-      <div class="control-group" id="wb-seg-mode-group" style="display: none;">
+      <div class="control-group" id="wb-seg-mode-group" style="display: flex;">
         <span class="control-label">Seg Mode</span>
         <select id="wb-seg-mode" class="clean-select">
           <option value="prominence">Standard Deviation</option>
           <option value="distance" selected>Dominant Frequency</option>
         </select>
       </div>
-      <div class="control-group" id="wb-hr-freq-group" style="display: none;">
+      <div class="control-group" id="wb-hr-freq-group" style="display: flex;">
         <span class="control-label">HR Dom Freq</span>
         <div style="display: flex; align-items: center; gap: 6px;">
           <input type="number" id="wb-hr-freq" class="number-input" min="0.001" max="1.0" step="0.001" style="width: 70px;">
@@ -237,10 +237,10 @@
     // Global State
     const state = {
       signal: 'mag',
-      clean: 'raw',
+      clean: 'iqr',
       lowCut: 0,
       highCut: 4.0,
-      segMethod: 'none',
+      segMethod: 'peaks',
       segMode: 'distance',
       hrFreq: null,
       data: null
@@ -268,6 +268,16 @@
         title: { text: titleY, standoff: 6 },
         gridcolor: 'rgba(255,255,255,0.04)',
         zerolinecolor: 'rgba(255,255,255,0.08)'
+      },
+      showlegend: true,
+      legend: {
+        x: 0.01,
+        y: 0.99,
+        xanchor: 'left',
+        yanchor: 'top',
+        bgcolor: 'rgba(0,0,0,0)',
+        orientation: 'h',
+        font: { size: 10 }
       }
     });
 
