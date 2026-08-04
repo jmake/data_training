@@ -159,10 +159,10 @@
       <div class="control-group">
         <span class="control-label">Signal</span>
         <select id="wb-signal" class="clean-select">
-          <option value="x">ACC X</option>
+          <option value="x" selected>ACC X</option>
           <option value="y">ACC Y</option>
           <option value="z">ACC Z</option>
-          <option value="mag" selected>Magnitude</option>
+          <option value="mag">Magnitude</option>
         </select>
       </div>
       <div class="control-group">
@@ -182,7 +182,7 @@
       <div class="control-group">
         <span class="control-label">High Cut</span>
         <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" id="wb-high-cut" class="number-input" min="0" max="50" step="0.1" value="4.0">
+          <input type="number" id="wb-high-cut" class="number-input" min="0" max="50" step="0.1" value="2.0">
           <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
         </div>
       </div>
@@ -263,10 +263,10 @@
   <script>
     // Global State
     const state = {
-      signal: 'mag',
+      signal: 'x',
       clean: 'iqr',
       lowCut: 0,
-      highCut: 4.0,
+      highCut: 2.0,
       segMethod: 'peaks',
       segMode: 'distance',
       hrFreq: null,
@@ -483,6 +483,21 @@
       document.getElementById('wb-spec-max').value = val.toFixed(3);
       renderCharts();
     });
+
+    // Toggle Heart Rate plot visibility on header click
+    const hrHeader = document.querySelector('.chart-header.hr');
+    const hrPlot = document.getElementById('wb-hr-plot');
+    if (hrHeader && hrPlot) {
+      hrHeader.style.cursor = 'pointer';
+      hrHeader.addEventListener('click', () => {
+        if (hrPlot.style.display === 'none') {
+          hrPlot.style.display = 'block';
+          Plotly.Plots.resize(hrPlot);
+        } else {
+          hrPlot.style.display = 'none';
+        }
+      });
+    }
 
     // Initial Load & Poll
     fetchData();
