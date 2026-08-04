@@ -108,11 +108,7 @@ function renderSpectrogram(data, state) {
     autorange: true
   };
 
-  if (xa && !xa.autorange) {
-    layout = { ...layout, xaxis: { ...layout.xaxis, range: [xa.range[0], xa.range[1]], autorange: false } };
-  }
-
-  Plotly.newPlot('wb-spec-plot', [trace], layout, PLOTLY_CFG);
+  Plotly.react('wb-spec-plot', [trace], layout, PLOTLY_CFG);
 }
 
 function computeSpectrogram(signal, fs, nperseg = 1024, noverlap = 896) {
