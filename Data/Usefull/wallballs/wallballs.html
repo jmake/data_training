@@ -364,6 +364,8 @@
             update = { "xaxis.autorange": true };
           } else if (ev["xaxis.range[0]"] !== undefined) {
             update = { "xaxis.range": [ev["xaxis.range[0]"], ev["xaxis.range[1]"]] };
+          } else if (ev["xaxis.range"]) {
+            update = { "xaxis.range": [ev["xaxis.range"][0], ev["xaxis.range"][1]] };
           }
           if (update) {
             ids.forEach(tgtId => {
