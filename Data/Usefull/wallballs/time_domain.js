@@ -12,6 +12,10 @@ function renderTimeDomain(data, state) {
   const reconRaw = bandpassReconstruct(fftRes, state.lowCut, state.highCut);
   const recon = reconRaw.map(v => v + mean);
 
+  // Power Filtered Reconstructed Signal (Overlap-Add)
+  const reconPowerRaw = spectrogramOverlapAdd(zeroMeanSignal, fs, 1024, 896, state.specMin, state.specMax);
+  const reconPower = reconPowerRaw.map(v => v + mean);
+
   const timeTraces = [
     {
       x: t,
@@ -28,6 +32,14 @@ function renderTimeDomain(data, state) {
       mode: 'lines',
       name: 'Filtered',
       line: { color: '#06b6d4', width: 1.5 }
+    },
+    {
+      x: t,
+      y: reconPower,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Power Filtered',
+      line: { color: '#eab308', width: 1.5 }
     }
   ];
 
@@ -76,4 +88,65 @@ function renderTimeDomain(data, state) {
   layout.shapes = shapes;
 
   Plotly.react('wb-time-plot', timeTraces, layout, PLOTLY_CFG);
+}
+
+/* Reconstruct signal from STFT windows using Overlap-Add, keeping bins with power within [pmin, pmax] */
+function spectrogramOverlapAdd(signal, fs, nperseg = 1024, noverlap = 896, pmin, pmax) {
+  const step = nperseg - noverlap;
+  const N = _nextPow2(nperseg);
+  const half = Math.floor(N / 2) + 1;
+
+  const outSignal = new Float64Array(signal.length);
+  const winSum = new Float64Array(signal.length);
+
+  // Hanning window
+  const win = new Float64Array(nperseg);
+  for (let i = 0; i < nperseg; i++) {
+    win[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (nperseg - 1)));
+  }
+
+  const re = new Float64Array(N);
+  const im = new Float64Array(N);
+
+  for (let offset = 0; offset + nperseg <= signal.length; offset += step) {
+    // Apply Hanning window
+    re.fill(0);
+    im.fill(0);
+    for (let i = 0; i < nperseg; i++) {
+      re[i] = signal[offset + i] * win[i];
+    }
+
+    // FFT
+    _fft(re, im);
+
+    // Filter bins based on local magnitude
+    for (let k = 0; k < half; k++) {
+      const mag = Math.sqrt(re[k]*re[k] + im[k]*im[k]) / nperseg;
+      const val = (k === 0 || k === half - 1) ? mag : mag * 2;
+      if (val < pmin || val > pmax) {
+        re[k] = 0;
+        im[k] = 0;
+        if (k > 0 && k < half - 1) {
+          re[N - k] = 0;
+          im[N - k] = 0;
+        }
+      }
+    }
+
+    // IFFT
+    _ifft(re, im);
+
+    // Overlap-Add with Hanning window
+    for (let i = 0; i < nperseg; i++) {
+      outSignal[offset + i] += re[i] * win[i];
+      winSum[offset + i] += win[i] * win[i];
+    }
+  }
+
+  // Normalize by window sum
+  const result = new Array(signal.length);
+  for (let i = 0; i < signal.length; i++) {
+    result[i] = winSum[i] > 1e-5 ? outSignal[i] / winSum[i] : 0;
+  }
+  return result;
 }
