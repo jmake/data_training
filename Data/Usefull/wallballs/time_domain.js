@@ -130,7 +130,7 @@ function renderTimeDomain(data, state) {
         x1: peak,
         y0: 0,
         y1: 1,
-        line: { color: 'rgba(34, 197, 94, 0.5)', width: 1, dash: 'dash' }
+        line: { color: 'rgba(34, 197, 94, 0.5)', width: 1 }
       });
     });
   }

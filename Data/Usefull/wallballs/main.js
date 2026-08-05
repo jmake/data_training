@@ -116,16 +116,17 @@ async function fetchData() {
           }
         });
 
-        timePlot.on('plotly_click', ev => {
-          if (!ev || !ev.points || ev.points.length === 0) return;
+        timePlot.addEventListener('click', e => {
           if (!state.accPeaks || state.accPeaks.length === 0) return;
-          const clickedX = ev.points[0].x;
-          const xRange = timePlot._fullLayout.xaxis.range;
-          const tolerance = (xRange[1] - xRange[0]) * 0.03;
-          const idx = state.accPeaks.findIndex(p => Math.abs(p - clickedX) <= tolerance);
+          const xaxis = timePlot._fullLayout && timePlot._fullLayout.xaxis;
+          if (!xaxis) return;
+          const rect = timePlot.getBoundingClientRect();
+          const mouseXPixel = (e.clientX - rect.left) - xaxis._offset;
+          const dataX = xaxis.range[0] + (mouseXPixel / xaxis._length) * (xaxis.range[1] - xaxis.range[0]);
+          const tolerance = (xaxis.range[1] - xaxis.range[0]) * 0.05;
+          const idx = state.accPeaks.findIndex(p => Math.abs(p - dataX) <= tolerance);
           if (idx === -1) return;
           state.accPeaks.splice(idx, 1);
-          // Recalculate segments from remaining peaks
           const tStart = state.data.acc.t[0];
           const tEnd = state.data.acc.t[state.data.acc.t.length - 1];
           const allPoints = [tStart, ...state.accPeaks, tEnd].sort((a, b) => a - b);
