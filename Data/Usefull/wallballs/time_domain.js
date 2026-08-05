@@ -68,8 +68,8 @@ function renderTimeDomain(data, state) {
   const shapes = [];
   if (data.hr_segments && data.hr_segments.length > 0) {
     const colors = [
-      'rgba(255, 255, 255, 0.02)',
-      'rgba(255, 255, 255, 0.05)'
+      'rgba(239, 68, 68, 0.02)',
+      'rgba(239, 68, 68, 0.05)'
     ];
     data.hr_segments.forEach((seg, i) => {
       shapes.push({
