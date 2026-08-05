@@ -16,81 +16,89 @@
   </header>
 
   <div class="container">
-    <!-- Signal & Filtering Controls -->
-    <div class="controls-card">
-      <div class="card-header-tag">Signal & Filtering</div>
-      <div class="control-group">
-        <span class="control-label">Signal</span>
-        <select id="wb-signal" class="clean-select">
-          <option value="x" selected>ACC X</option>
-          <option value="y">ACC Y</option>
-          <option value="z">ACC Z</option>
-          <option value="mag">Magnitude</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <span class="control-label">Cleaning</span>
-        <select id="wb-clean" class="clean-select">
-          <option value="raw">Raw</option>
-          <option value="iqr" selected>IQR (N=3.0)</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <span class="control-label">Low Cut</span>
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" id="wb-low-cut" class="number-input" min="0" max="50" step="0.1" value="0">
-          <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
-        </div>
-      </div>
-      <div class="control-group">
-        <span class="control-label">High Cut</span>
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" id="wb-high-cut" class="number-input" min="0" max="50" step="0.1" value="2.0">
-          <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
-        </div>
-      </div>
-      <div class="control-group">
-        <span class="control-label">Sampling</span>
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" id="wb-recon-rate" class="number-input" min="0.1" max="100" step="0.1" value="20.0">
-          <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
-          <span id="wb-time-selection-status" style="font-size: 0.8rem; color: #9ca3af; font-family: monospace; margin-left: 10px;">(0 / 0 pts)</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Hierarchical Segmentation Controls -->
-    <div class="controls-card">
-      <div class="card-header-tag">Peak Segmentation</div>
-      <div class="control-group">
-        <span class="control-label">Seg Method</span>
-        <select id="wb-seg-method" class="clean-select">
-          <option value="none">None</option>
-          <option value="peaks" selected>By Peaks</option>
-        </select>
-      </div>
-      <div class="control-group" id="wb-seg-mode-group" style="display: flex;">
-        <span class="control-label">Seg Mode</span>
-        <select id="wb-seg-mode" class="clean-select">
-          <option value="prominence">Standard Deviation</option>
-          <option value="distance" selected>Dominant Frequency</option>
-        </select>
-      </div>
-      <div class="control-group" id="wb-hr-freq-group" style="display: flex;">
-        <span class="control-label">HR Dom Freq</span>
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" id="wb-hr-freq" class="number-input" min="0.001" max="1.0" step="0.001" style="width: 70px;">
-          <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Time Domain Chart -->
+    <!-- Combined Processing & Analysis Card -->
     <div class="chart-card">
       <div class="chart-header">
-        <span class="chart-title time-title">Time Domain</span>
+        <span class="chart-title processing-title">Signal Processing & Analysis</span>
       </div>
-      <div id="wb-time-plot" class="plot-box"></div>
+      <div id="wb-processing-content" style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Signal & Filtering Controls -->
+        <div class="controls-card">
+          <div class="card-header-tag">Signal & Filtering</div>
+          <div class="control-group">
+            <span class="control-label">Signal</span>
+            <select id="wb-signal" class="clean-select">
+              <option value="x" selected>ACC X</option>
+              <option value="y">ACC Y</option>
+              <option value="z">ACC Z</option>
+              <option value="mag">Magnitude</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <span class="control-label">Cleaning</span>
+            <select id="wb-clean" class="clean-select">
+              <option value="raw">Raw</option>
+              <option value="iqr" selected>IQR (N=3.0)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <span class="control-label">Low Cut</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="number" id="wb-low-cut" class="number-input" min="0" max="50" step="0.1" value="0">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <span class="control-label">High Cut</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="number" id="wb-high-cut" class="number-input" min="0" max="50" step="0.1" value="2.0">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <span class="control-label">Sampling</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="number" id="wb-recon-rate" class="number-input" min="0.1" max="100" step="0.1" value="20.0">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
+              <span id="wb-time-selection-status" style="font-size: 0.8rem; color: #9ca3af; font-family: monospace; margin-left: 10px;">(0 / 0 pts)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hierarchical Segmentation Controls -->
+        <div class="controls-card">
+          <div class="card-header-tag">Peak Segmentation</div>
+          <div class="control-group">
+            <span class="control-label">Seg Method</span>
+            <select id="wb-seg-method" class="clean-select">
+              <option value="none">None</option>
+              <option value="peaks" selected>By Peaks</option>
+            </select>
+          </div>
+          <div class="control-group" id="wb-seg-mode-group" style="display: flex;">
+            <span class="control-label">Seg Mode</span>
+            <select id="wb-seg-mode" class="clean-select">
+              <option value="prominence">Standard Deviation</option>
+              <option value="distance" selected>Dominant Frequency</option>
+            </select>
+          </div>
+          <div class="control-group" id="wb-hr-freq-group" style="display: flex;">
+            <span class="control-label">HR Dom Freq</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="number" id="wb-hr-freq" class="number-input" min="0.001" max="1.0" step="0.001" style="width: 70px;">
+              <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Time Domain Chart -->
+        <div class="chart-card" style="background: transparent; border: none; padding: 0;">
+          <div class="chart-header">
+            <span class="chart-title time-title">Time Domain</span>
+          </div>
+          <div id="wb-time-plot" class="plot-box"></div>
+        </div>
+      </div>
     </div>
 
     <!-- HR Chart -->

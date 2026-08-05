@@ -156,20 +156,26 @@ document.getElementById('wb-spec-max-slider').addEventListener('input', e => {
 
 // Toggle plot visibilities on title clicks
 const plotToggles = [
+  { titleSel: '.processing-title', plotId: 'wb-processing-content' },
   { titleSel: '.time-title', plotId: 'wb-time-plot' },
   { titleSel: '.hr-title', plotId: 'wb-hr-plot' },
-  { titleSel: '.spec-title', plotId: 'wb-spec-title' }
+  { titleSel: '.spec-title', plotId: 'wb-spec-plot' }
 ];
 
 plotToggles.forEach(t => {
   const titleEl = document.querySelector(t.titleSel);
-  const plot = document.getElementById(t.plotId === 'wb-spec-title' ? 'wb-spec-plot' : t.plotId); // fix plot vs title id mismatch
+  const plot = document.getElementById(t.plotId);
   if (titleEl && plot) {
     titleEl.style.cursor = 'pointer';
     titleEl.addEventListener('click', () => {
       if (plot.style.display === 'none') {
-        plot.style.display = 'block';
-        Plotly.Plots.resize(plot);
+        plot.style.display = t.plotId === 'wb-processing-content' ? 'flex' : 'block';
+        if (t.plotId === 'wb-processing-content') {
+          const timePlot = document.getElementById('wb-time-plot');
+          if (timePlot) Plotly.Plots.resize(timePlot);
+        } else {
+          Plotly.Plots.resize(plot);
+        }
       } else {
         plot.style.display = 'none';
       }
