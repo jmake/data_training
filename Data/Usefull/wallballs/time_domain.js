@@ -61,6 +61,8 @@ function renderTimeDomain(data, state) {
   let layout = baseLayout('ACC Magnitude');
   if (xa && !xa.autorange) {
     layout = { ...layout, xaxis: { ...layout.xaxis, range: [xa.range[0], xa.range[1]], autorange: false } };
+  } else {
+    layout = { ...layout, xaxis: { ...layout.xaxis, range: [t[0], t[t.length - 1]], autorange: false } };
   }
 
   const shapes = [];

@@ -180,6 +180,12 @@ function renderSpectrogram(data, state) {
   layout.margin = { ...layout.margin, b: 70 };
   layout.showlegend = false;
   layout.shapes = shapes;
+
+  if (xa && !xa.autorange) {
+    layout = { ...layout, xaxis: { ...layout.xaxis, range: [xa.range[0], xa.range[1]], autorange: false } };
+  } else if (data.acc && data.acc.t && data.acc.t.length > 0) {
+    layout = { ...layout, xaxis: { ...layout.xaxis, range: [data.acc.t[0], data.acc.t[data.acc.t.length - 1]], autorange: false } };
+  }
   
   // Dynamically generate log sub-ticks (1 through 9 for each power decade)
   const yTicksHz = [];
