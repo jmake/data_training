@@ -1,0 +1,151 @@
+:root {
+  --bg-color: #0b0f19;
+  --card-bg: rgba(17, 24, 39, 0.7);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --text-color: #f3f4f6;
+  --text-muted: #9ca3af;
+  --accent-cyan: #06b6d4;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
+}
+
+body {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  padding: 20px 40px;
+  background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  background: linear-gradient(to right, #22d3ee, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.container {
+  flex: 1;
+  padding: 30px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: calc(100% - 80px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.controls-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  position: relative;
+}
+
+.card-header-tag {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 0.7rem;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.clean-select, .number-input {
+  background: #1e293b;
+  border: 1px solid var(--card-border);
+  color: var(--text-color);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.clean-select:focus, .number-input:focus {
+  border-color: var(--accent-cyan);
+}
+
+.number-input {
+  width: 80px;
+}
+
+/* Hide HTML5 number spinner arrows */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.chart-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.chart-header {
+  margin-bottom: 12px;
+  border-left: 3px solid var(--accent-cyan);
+  padding-left: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chart-header.hr {
+  border-left-color: var(--accent-red);
+}
+
+.chart-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.plot-box {
+  width: 100%;
+  height: 300px;
+}

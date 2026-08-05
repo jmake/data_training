@@ -7,145 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-  <style>
-    :root {
-      --bg-color: #0b0f19;
-      --card-bg: rgba(17, 24, 39, 0.7);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --text-color: #f3f4f6;
-      --text-muted: #9ca3af;
-      --accent-cyan: #06b6d4;
-      --accent-red: #ef4444;
-      --accent-purple: #8b5cf6;
-    }
-
-    body {
-      margin: 0;
-      font-family: 'Outfit', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      padding: 20px 40px;
-      background: rgba(15, 23, 42, 0.9);
-      border-bottom: 1px solid var(--card-border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 600;
-      background: linear-gradient(to right, #22d3ee, #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .container {
-      flex: 1;
-      padding: 30px 40px;
-      max-width: 1400px;
-      margin: 0 auto;
-      width: calc(100% - 80px);
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .controls-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 20px;
-      backdrop-filter: blur(10px);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      align-items: center;
-    }
-
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .control-label {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-weight: 500;
-    }
-
-    .clean-select, .number-input {
-      background: #1e293b;
-      border: 1px solid var(--card-border);
-      color: var(--text-color);
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-family: inherit;
-      font-size: 0.9rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .clean-select:focus, .number-input:focus {
-      border-color: var(--accent-cyan);
-    }
-
-    .number-input {
-      width: 80px;
-    }
-
-    /* Hide HTML5 number spinner arrows */
-    input::-webkit-outer-spin-button,
-    input::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-    input[type=number] {
-      -moz-appearance: textfield;
-    }
-
-    .chart-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 20px;
-      backdrop-filter: blur(10px);
-    }
-
-    .chart-header {
-      margin-bottom: 12px;
-      border-left: 3px solid var(--accent-cyan);
-      padding-left: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .chart-header.hr {
-      border-left-color: var(--accent-red);
-    }
-
-    .chart-title {
-      font-size: 1.1rem;
-      font-weight: 500;
-      color: var(--text-color);
-    }
-
-    .plot-box {
-      width: 100%;
-      height: 300px;
-    }
-  </style>
+  <link rel="stylesheet" href="/wallballs/wallballs.css">
 </head>
 <body>
 
@@ -156,6 +18,7 @@
   <div class="container">
     <!-- Signal & Filtering Controls -->
     <div class="controls-card">
+      <div class="card-header-tag">Signal & Filtering</div>
       <div class="control-group">
         <span class="control-label">Signal</span>
         <select id="wb-signal" class="clean-select">
@@ -186,10 +49,19 @@
           <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
         </div>
       </div>
+      <div class="control-group">
+        <span class="control-label">Sampling</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <input type="number" id="wb-recon-rate" class="number-input" min="0.1" max="100" step="0.1" value="4.0">
+          <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
+          <span id="wb-time-selection-status" style="font-size: 0.8rem; color: #9ca3af; font-family: monospace; margin-left: 10px;">(0 / 0 pts)</span>
+        </div>
+      </div>
     </div>
 
     <!-- Hierarchical Segmentation Controls -->
     <div class="controls-card">
+      <div class="card-header-tag">Peak Segmentation</div>
       <div class="control-group">
         <span class="control-label">Seg Method</span>
         <select id="wb-seg-method" class="clean-select">
@@ -239,6 +111,7 @@
 
     <!-- Spectrogram Controls -->
     <div class="controls-card">
+      <div class="card-header-tag">Spectrogram Ranges</div>
       <div class="control-group">
         <span class="control-label">Min Power</span>
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -260,248 +133,6 @@
   <script src="/wallballs/heart_rat.js"></script>
   <script src="/wallballs/time_domain.js"></script>
   <script src="/wallballs/spectrogram.js"></script>
-  <script>
-    // Global State
-    const state = {
-      signal: 'x',
-      clean: 'iqr',
-      lowCut: 0,
-      highCut: 2.0,
-      segMethod: 'peaks',
-      segMode: 'distance',
-      hrFreq: null,
-      specMin: 0.0,
-      specMax: 0.5,
-      lastSignal: null,
-      data: null
-    };
-
-    const PLOTLY_CFG = {
-      responsive: true,
-      displayModeBar: true,
-      modeBarButtonsToRemove: ['select2d', 'lasso2d'],
-      displaylogo: false
-    };
-
-    const baseLayout = (titleY) => ({
-      uirevision: true,
-      paper_bgcolor: 'transparent',
-      plot_bgcolor: 'transparent',
-      margin: { l: 60, r: 20, t: 10, b: 40 },
-      font: { family: 'Outfit, sans-serif', color: '#9ca3af', size: 11 },
-      xaxis: {
-        title: { text: 'Time (s)', standoff: 6 },
-        gridcolor: 'rgba(255,255,255,0.04)',
-        zerolinecolor: 'rgba(255,255,255,0.08)'
-      },
-      yaxis: {
-        title: { text: titleY, standoff: 6 },
-        gridcolor: 'rgba(255,255,255,0.04)',
-        zerolinecolor: 'rgba(255,255,255,0.08)'
-      },
-      showlegend: true,
-      legend: {
-        x: 0.01,
-        y: 0.99,
-        xanchor: 'left',
-        yanchor: 'top',
-        bgcolor: 'rgba(0,0,0,0)',
-        orientation: 'h',
-        font: { size: 10 }
-      }
-    });
-
-    let etag = null;
-    let inited = false;
-
-    async function fetchData() {
-      try {
-        const headers = {};
-        if (etag) {
-          headers['If-None-Match'] = etag;
-        }
-        const url = `/data/wallballs?clean=${state.clean}&seg_method=${state.segMethod}&seg_mode=${state.segMode}` + 
-                    (state.hrFreq ? `&hr_freq=${state.hrFreq}` : '');
-        const res = await fetch(url, { headers });
-        if (res.status === 304) {
-          return;
-        }
-        if (!res.ok) return;
-        etag = res.headers.get('ETag');
-        state.data = await res.json();
-
-        // Show / Hide custom frequency group based on segMode
-        const freqGroup = document.getElementById('wb-hr-freq-group');
-        if (state.segMethod === 'peaks' && state.segMode === 'distance') {
-          freqGroup.style.display = 'flex';
-          if (state.hrFreq === null && state.data.hr_dom_freq) {
-            document.getElementById('wb-hr-freq').value = state.data.hr_dom_freq.toFixed(3);
-          }
-        } else {
-          freqGroup.style.display = 'none';
-        }
-
-        renderCharts();
-        if (!inited) {
-          setupSync(['wb-time-plot', 'wb-hr-plot', 'wb-spec-plot']);
-          inited = true;
-        }
-      } catch (err) {
-        console.error('Fetch error:', err);
-      }
-    }
-
-    function setupSync(ids) {
-      let syncing = false;
-      ids.forEach(srcId => {
-        const el = document.getElementById(srcId);
-        if (!el) return;
-        el.on("plotly_relayout", ev => {
-          if (syncing) return;
-          syncing = true;
-          let update = null;
-          if (ev["xaxis.autorange"]) {
-            update = { "xaxis.autorange": true };
-          } else if (ev["xaxis.range[0]"] !== undefined) {
-            update = { "xaxis.range": [ev["xaxis.range[0]"], ev["xaxis.range[1]"]] };
-          } else if (ev["xaxis.range"]) {
-            update = { "xaxis.range": [ev["xaxis.range"][0], ev["xaxis.range"][1]] };
-          }
-          if (update) {
-            ids.forEach(tgtId => {
-              if (tgtId !== srcId) {
-                const tgtEl = document.getElementById(tgtId);
-                if (tgtEl && tgtEl._fullLayout) {
-                  const tgtXa = tgtEl._fullLayout.xaxis;
-                  if (update["xaxis.autorange"] && tgtXa.autorange === true) return;
-                  if (update["xaxis.range"]) {
-                    const r = update["xaxis.range"];
-                    if (tgtXa.autorange === false && tgtXa.range &&
-                        Math.abs(tgtXa.range[0] - r[0]) < 1e-4 &&
-                        Math.abs(tgtXa.range[1] - r[1]) < 1e-4) {
-                      return;
-                    }
-                  }
-                  Plotly.relayout(tgtId, update);
-                }
-              }
-            });
-          }
-          syncing = false;
-        });
-      });
-    }
-
-    function renderCharts() {
-      if (!state.data) return;
-      renderHeartRate(state.data);
-      renderTimeDomain(state.data, state);
-      renderSpectrogram(state.data, state);
-    }
-
-    // Event Listeners
-    document.getElementById('wb-signal').addEventListener('change', e => {
-      state.signal = e.target.value;
-      renderCharts();
-    });
-
-    document.getElementById('wb-clean').addEventListener('change', e => {
-      state.clean = e.target.value;
-      fetchData();
-    });
-
-    document.getElementById('wb-low-cut').addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        state.lowCut = parseFloat(e.target.value) || 0;
-        renderCharts();
-      }
-    });
-
-    document.getElementById('wb-high-cut').addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        state.highCut = parseFloat(e.target.value) || 0;
-        renderCharts();
-      }
-    });
-
-    document.getElementById('wb-seg-method').addEventListener('change', e => {
-      state.segMethod = e.target.value;
-      const modeGroup = document.getElementById('wb-seg-mode-group');
-      if (state.segMethod === 'peaks') {
-        modeGroup.style.display = 'flex';
-        document.getElementById('wb-seg-mode').value = 'distance';
-        state.segMode = 'distance';
-      } else {
-        modeGroup.style.display = 'none';
-      }
-      state.hrFreq = null; // Reset to auto
-      fetchData();
-    });
-
-    document.getElementById('wb-seg-mode').addEventListener('change', e => {
-      state.segMode = e.target.value;
-      state.hrFreq = null; // Reset to auto
-      fetchData();
-    });
-
-    document.getElementById('wb-hr-freq').addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        const val = parseFloat(e.target.value);
-        state.hrFreq = (!isNaN(val) && val > 0) ? val : null;
-        fetchData();
-      }
-    });
-
-    document.getElementById('wb-spec-min').addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        const val = parseFloat(e.target.value) || 0;
-        state.specMin = val;
-        document.getElementById('wb-spec-min-slider').value = val;
-        renderCharts();
-      }
-    });
-
-    document.getElementById('wb-spec-min-slider').addEventListener('input', e => {
-      const val = parseFloat(e.target.value);
-      state.specMin = val;
-      document.getElementById('wb-spec-min').value = val.toFixed(3);
-      renderCharts();
-    });
-
-    document.getElementById('wb-spec-max').addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        const val = parseFloat(e.target.value) || 0.5;
-        state.specMax = val;
-        document.getElementById('wb-spec-max-slider').value = val;
-        renderCharts();
-      }
-    });
-
-    document.getElementById('wb-spec-max-slider').addEventListener('input', e => {
-      const val = parseFloat(e.target.value);
-      state.specMax = val;
-      document.getElementById('wb-spec-max').value = val.toFixed(3);
-      renderCharts();
-    });
-
-    // Toggle Heart Rate plot visibility on header click
-    const hrHeader = document.querySelector('.chart-header.hr');
-    const hrPlot = document.getElementById('wb-hr-plot');
-    if (hrHeader && hrPlot) {
-      hrHeader.style.cursor = 'pointer';
-      hrHeader.addEventListener('click', () => {
-        if (hrPlot.style.display === 'none') {
-          hrPlot.style.display = 'block';
-          Plotly.Plots.resize(hrPlot);
-        } else {
-          hrPlot.style.display = 'none';
-        }
-      });
-    }
-
-    // Initial Load & Poll
-    fetchData();
-    setInterval(fetchData, 3000);
-  </script>
+  <script src="/wallballs/main.js"></script>
 </body>
 </html>
