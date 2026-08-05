@@ -209,6 +209,38 @@ document.getElementById('wb-acc-seg').addEventListener('change', e => {
   fetchData();
 });
 
+document.getElementById('wb-acc-save').addEventListener('click', async () => {
+  try {
+    await fetch('/save_segments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session: 'wallballs',
+        accPeaks: state.accPeaks,
+        accSegments: state.accSegments
+      })
+    });
+    console.log('Segments saved successfully');
+  } catch (err) {
+    console.error('Save error:', err);
+  }
+});
+
+document.getElementById('wb-acc-load').addEventListener('click', async () => {
+  try {
+    const res = await fetch('/load_segments?session=wallballs');
+    if (res.ok) {
+      const data = await res.json();
+      state.accPeaks = data.accPeaks || [];
+      state.accSegments = data.accSegments || [];
+      if (state.data) renderTimeDomain(state.data, state);
+      console.log('Segments loaded successfully');
+    }
+  } catch (err) {
+    console.error('Load error:', err);
+  }
+});
+
 document.getElementById('wb-hr-freq').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const val = parseFloat(e.target.value);

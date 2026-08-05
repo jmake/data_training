@@ -266,6 +266,21 @@ class Handler(BaseHTTPRequestHandler):
         path   = parsed.path
         params = parse_qs(parsed.query)
 
+        if path.startswith("/load_segments"):
+            session_name = params.get("session", ["wallballs"])[0]
+            fpath = os.path.join(BASE, f"custom_segments_{session_name}.json")
+            if os.path.exists(fpath):
+                with open(fpath, "r") as f:
+                    content = f.read().encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_response(404); self.end_headers()
+            return
+
         if path.startswith("/data/"):
             name = path[6:]
             if name.startswith("segment/"):
@@ -420,6 +435,28 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(content)
             else:
                 self.send_response(404); self.end_headers()
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        if parsed.path == "/save_segments":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                session_name = data.get("session", "wallballs")
+                fpath = os.path.join(BASE, f"custom_segments_{session_name}.json")
+                with open(fpath, "w") as f:
+                    json.dump(data, f)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"status": "ok"}')
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                print("Error saving segments:", e)
+            return
+        self.send_response(404); self.end_headers()
 
     def log_message(self, fmt, *args):
         print(f"[{self.address_string()}] {fmt % args}")
