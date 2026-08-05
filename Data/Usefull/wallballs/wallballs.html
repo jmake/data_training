@@ -65,6 +65,31 @@
           </div>
         </div>
 
+
+        <!-- Time Domain Chart -->
+        <div class="chart-card" style="background: transparent; border: none; padding: 0;">
+          <div class="chart-header">
+            <span class="chart-title time-title">Time Domain</span>
+          </div>
+          <div id="wb-time-plot" class="plot-box"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Combined Heart Rate Analysis Card -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title hr-analysis-title">Heart Rate Analysis</span>
+      </div>
+      <div id="wb-hr-analysis-content" style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- HR Chart -->
+        <div class="chart-card" style="background: transparent; border: none; padding: 0;">
+          <div class="chart-header hr" style="border-left-color: var(--accent-red);">
+            <span class="chart-title hr-title">Heart Rate</span>
+          </div>
+          <div id="wb-hr-plot" class="plot-box"></div>
+        </div>
+
         <!-- Hierarchical Segmentation Controls -->
         <div class="controls-card">
           <div class="card-header-tag">Peak Segmentation</div>
@@ -89,30 +114,6 @@
               <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
             </div>
           </div>
-        </div>
-
-        <!-- Time Domain Chart -->
-        <div class="chart-card" style="background: transparent; border: none; padding: 0;">
-          <div class="chart-header">
-            <span class="chart-title time-title">Time Domain</span>
-          </div>
-          <div id="wb-time-plot" class="plot-box"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Combined Heart Rate Analysis Card -->
-    <div class="chart-card">
-      <div class="chart-header">
-        <span class="chart-title hr-analysis-title">Heart Rate Analysis</span>
-      </div>
-      <div id="wb-hr-analysis-content" style="display: flex; flex-direction: column; gap: 20px;">
-        <!-- HR Chart -->
-        <div class="chart-card" style="background: transparent; border: none; padding: 0;">
-          <div class="chart-header hr" style="border-left-color: var(--accent-red);">
-            <span class="chart-title hr-title">Heart Rate</span>
-          </div>
-          <div id="wb-hr-plot" class="plot-box"></div>
         </div>
       </div>
     </div>

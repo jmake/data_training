@@ -32,7 +32,7 @@ function renderTimeDomain(data, state) {
       type: 'scatter',
       mode: 'lines',
       name: 'Original',
-      line: { color: '#ef4444', width: 1 }
+      line: { color: '#4b5563', width: 1.5 }
     },
     {
       x: plotT,
