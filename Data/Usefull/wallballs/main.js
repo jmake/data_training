@@ -121,7 +121,7 @@ async function fetchData() {
           if (!state.accPeaks || state.accPeaks.length === 0) return;
           const clickedX = ev.points[0].x;
           const xRange = timePlot._fullLayout.xaxis.range;
-          const tolerance = (xRange[1] - xRange[0]) * 0.01;
+          const tolerance = (xRange[1] - xRange[0]) * 0.03;
           const idx = state.accPeaks.findIndex(p => Math.abs(p - clickedX) <= tolerance);
           if (idx === -1) return;
           state.accPeaks.splice(idx, 1);
