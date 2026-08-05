@@ -112,8 +112,31 @@ function renderSpectrogram(data, state) {
     });
   }
 
-  // Draw horizontal gridlines above the heatmap for the main ticks (0.1, 1.0, 10.0 Hz)
-  const mainYTicks = [0.1, 1.0, 10.0];
+  // Determine dynamic frequency display boundaries based on source
+  const minF = spec.f[0];
+  const maxF = spec.f[spec.f.length - 1];
+  let displayMin = minF;
+  let displayMax = maxF;
+
+  if (state.specSource === 'filtered') {
+    if (state.lowCut > 0) {
+      displayMin = Math.max(minF, state.lowCut);
+    }
+    if (state.highCut > 0) {
+      displayMax = Math.min(maxF, state.highCut);
+    }
+  }
+
+  // Dynamically compute powers of 10 within display bounds for gridlines and label text
+  const startPower = Math.ceil(Math.log10(displayMin));
+  const endPower = Math.floor(Math.log10(displayMax));
+
+  const mainYTicks = [];
+  for (let p = startPower; p <= endPower; p++) {
+    mainYTicks.push(Math.pow(10, p));
+  }
+
+  // Draw horizontal gridlines above the heatmap for the main powers of 10 ticks
   mainYTicks.forEach(v => {
     shapes.push({
       type: 'line',
@@ -136,21 +159,31 @@ function renderSpectrogram(data, state) {
   layout.showlegend = false;
   layout.shapes = shapes;
   
-  // Set Y-axis to linear with custom ticks mapped to log10 space
-  const yTicksHz = [
-    0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-    1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
-    10.0, 20.0
-  ];
+  // Dynamically generate log sub-ticks (1 through 9 for each power decade)
+  const yTicksHz = [];
+  for (let p = startPower - 1; p <= endPower + 1; p++) {
+    const base = Math.pow(10, p);
+    for (let mult = 1; mult <= 9; mult++) {
+      const val = base * mult;
+      if (val >= displayMin && val <= displayMax) {
+        yTicksHz.push(val);
+      }
+    }
+  }
+
   const tickVals = yTicksHz.map(v => Math.log10(v));
-  const tickText = yTicksHz.map(v => (v === 0.1 || v === 1.0 || v === 10.0) ? v.toString() : "");
+  const tickText = yTicksHz.map(v => {
+    const isPowerOf10 = Math.abs(Math.log10(v) - Math.round(Math.log10(v))) < 1e-9;
+    return isPowerOf10 ? v.toString() : "";
+  });
 
   layout.yaxis = {
     ...layout.yaxis,
     type: 'linear', // Use linear axis with log data to bypass Plotly bugs
+    tickmode: 'array',
     tickvals: tickVals,
     ticktext: tickText,
-    range: [Math.log10(0.1), Math.log10(25.0)],
+    range: [Math.log10(displayMin), Math.log10(displayMax)],
     autorange: false
   };
 
