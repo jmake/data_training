@@ -1,54 +1,3 @@
-// Global State
-const state = {
-  signal: 'x',
-  clean: 'iqr',
-  lowCut: 0,
-  highCut: 2.0,
-  reconRate: 4.0,
-  segMethod: 'peaks',
-  segMode: 'distance',
-  hrFreq: null,
-  specMin: 0.0,
-  specMax: 0.5,
-  lastSignal: null,
-  data: null
-};
-
-const PLOTLY_CFG = {
-  responsive: true,
-  displayModeBar: true,
-  modeBarButtonsToRemove: ['select2d', 'lasso2d'],
-  displaylogo: false
-};
-
-const baseLayout = (titleY) => ({
-  uirevision: true,
-  paper_bgcolor: 'transparent',
-  plot_bgcolor: 'transparent',
-  margin: { l: 60, r: 20, t: 10, b: 40 },
-  font: { family: 'Outfit, sans-serif', color: '#9ca3af', size: 11 },
-  xaxis: {
-    title: { text: 'Time (s)', standoff: 6 },
-    gridcolor: 'rgba(255,255,255,0.04)',
-    zerolinecolor: 'rgba(255,255,255,0.08)'
-  },
-  yaxis: {
-    title: { text: titleY, standoff: 6 },
-    gridcolor: 'rgba(255,255,255,0.04)',
-    zerolinecolor: 'rgba(255,255,255,0.08)'
-  },
-  showlegend: true,
-  legend: {
-    x: 0.01,
-    y: 0.99,
-    xanchor: 'left',
-    yanchor: 'top',
-    bgcolor: 'rgba(0,0,0,0)',
-    orientation: 'h',
-    font: { size: 10 }
-  }
-});
-
 let etag = null;
 let inited = false;
 
@@ -102,47 +51,6 @@ async function fetchData() {
   } catch (err) {
     console.error('Fetch error:', err);
   }
-}
-
-function setupSync(ids) {
-  let syncing = false;
-  ids.forEach(srcId => {
-    const el = document.getElementById(srcId);
-    if (!el) return;
-    el.on("plotly_relayout", ev => {
-      if (syncing) return;
-      syncing = true;
-      let update = null;
-      if (ev["xaxis.autorange"]) {
-        update = { "xaxis.autorange": true };
-      } else if (ev["xaxis.range[0]"] !== undefined) {
-        update = { "xaxis.range": [ev["xaxis.range[0]"], ev["xaxis.range[1]"]] };
-      } else if (ev["xaxis.range"]) {
-        update = { "xaxis.range": [ev["xaxis.range"][0], ev["xaxis.range"][1]] };
-      }
-      if (update) {
-        ids.forEach(tgtId => {
-          if (tgtId !== srcId) {
-            const tgtEl = document.getElementById(tgtId);
-            if (tgtEl && tgtEl._fullLayout) {
-              const tgtXa = tgtEl._fullLayout.xaxis;
-              if (update["xaxis.autorange"] && tgtXa.autorange === true) return;
-              if (update["xaxis.range"]) {
-                const r = update["xaxis.range"];
-                if (tgtXa.autorange === false && tgtXa.range &&
-                    Math.abs(tgtXa.range[0] - r[0]) < 1e-4 &&
-                    Math.abs(tgtXa.range[1] - r[1]) < 1e-4) {
-                  return;
-                }
-              }
-              Plotly.relayout(tgtId, update);
-            }
-          }
-        });
-      }
-      syncing = false;
-    });
-  });
 }
 
 function renderCharts() {

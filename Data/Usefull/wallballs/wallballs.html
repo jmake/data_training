@@ -52,7 +52,7 @@
       <div class="control-group">
         <span class="control-label">Sampling</span>
         <div style="display: flex; align-items: center; gap: 6px;">
-          <input type="number" id="wb-recon-rate" class="number-input" min="0.1" max="100" step="0.1" value="4.0">
+          <input type="number" id="wb-recon-rate" class="number-input" min="0.1" max="100" step="0.1" value="20.0">
           <span style="font-size: 0.9rem; color: var(--text-muted);">Hz</span>
           <span id="wb-time-selection-status" style="font-size: 0.8rem; color: #9ca3af; font-family: monospace; margin-left: 10px;">(0 / 0 pts)</span>
         </div>
@@ -131,6 +131,9 @@
 
   <script src="/fft_lib.js"></script>
   <script src="/wallballs/heart_rat.js"></script>
+  <script src="/wallballs/state.js"></script>
+  <script src="/wallballs/config.js"></script>
+  <script src="/wallballs/sync.js"></script>
   <script src="/wallballs/time_domain.js"></script>
   <script src="/wallballs/spectrogram.js"></script>
   <script src="/wallballs/main.js"></script>
