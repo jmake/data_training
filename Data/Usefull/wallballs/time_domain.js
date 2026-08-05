@@ -16,6 +16,15 @@ function renderTimeDomain(data, state) {
   const reconPowerRaw = spectrogramOverlapAdd(zeroMeanSignal, fs, 1024, 896, state.specMin, state.specMax);
   const reconPower = reconPowerRaw.map(v => v + mean);
 
+  // Downsample Filtered trace for plotting based on reconRate (Nyquist theorem limit)
+  const step = Math.max(1, Math.floor(fs / state.reconRate));
+  const plotT = [];
+  const plotRecon = [];
+  for (let i = 0; i < t.length; i += step) {
+    plotT.push(t[i]);
+    plotRecon.push(recon[i]);
+  }
+
   const timeTraces = [
     {
       x: t,
@@ -26,12 +35,15 @@ function renderTimeDomain(data, state) {
       line: { color: '#ef4444', width: 1 }
     },
     {
-      x: t,
-      y: recon,
+      x: plotT,
+      y: plotRecon,
       type: 'scatter',
-      mode: 'lines',
+      mode: 'lines+markers',
       name: 'Filtered',
-      line: { color: '#06b6d4', width: 1.5 }
+      line: { color: '#06b6d4', width: 1.5 },
+      marker: { size: 3 },
+      selected: { marker: { color: '#f97316', size: 6, opacity: 1 } },
+      unselected: { marker: { opacity: 0 } }
     },
     {
       x: t,
@@ -87,7 +99,17 @@ function renderTimeDomain(data, state) {
   }
   layout.shapes = shapes;
 
-  Plotly.react('wb-time-plot', timeTraces, layout, PLOTLY_CFG);
+  const timePlotCfg = {
+    ...PLOTLY_CFG,
+    modeBarButtonsToRemove: []
+  };
+
+  Plotly.react('wb-time-plot', timeTraces, layout, timePlotCfg).then(() => {
+    const timeStatusEl = document.getElementById('wb-time-selection-status');
+    if (timeStatusEl) {
+      timeStatusEl.textContent = `(0 / ${plotT.length} pts)`;
+    }
+  });
 }
 
 /* Reconstruct signal from STFT windows using Overlap-Add, keeping bins with power within [pmin, pmax] */
