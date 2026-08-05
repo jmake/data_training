@@ -8,8 +8,15 @@ function renderSpectrogram(data, state) {
   const mean = origSignal.reduce((a, b) => a + b, 0) / origSignal.length;
   const zeroMeanSignal = origSignal.map(v => v - mean);
 
+  // Choose the source signal based on configuration
+  let targetSignal = zeroMeanSignal;
+  if (state.specSource === 'filtered') {
+    const fftRes = signalFFT(zeroMeanSignal, fs);
+    targetSignal = bandpassReconstruct(fftRes, state.lowCut, state.highCut);
+  }
+
   // Compute spectrogram using 1024 segment size, 896 overlap, up to Nyquist limit
-  const spec = computeSpectrogram(zeroMeanSignal, fs, 1024, 896);
+  const spec = computeSpectrogram(targetSignal, fs, 1024, 896);
 
   // Find absolute minimum and maximum power values in the spectrogram
   let minVal = Infinity;
@@ -101,10 +108,29 @@ function renderSpectrogram(data, state) {
   layout.showlegend = false;
   layout.shapes = shapes;
   
-  // Set Y-axis to logarithmic
+  // Set Y-axis to logarithmic with custom clean ticks and intermediate gridlines
+  const yTicksHz = [
+    0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+    1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+    10.0, 20.0
+  ];
+  const tickText = yTicksHz.map(v => (v === 0.1 || v === 1.0 || v === 10.0) ? v.toString() : "");
+
+  layout.xaxis = {
+    ...layout.xaxis,
+    showgrid: true,
+    gridcolor: 'rgba(255,255,255,1.0)',
+    layer: 'above traces'
+  };
+
   layout.yaxis = {
     ...layout.yaxis,
     type: 'log',
+    tickvals: yTicksHz,
+    ticktext: tickText,
+    showgrid: true,
+    gridcolor: 'rgba(255,255,255,1.0)',
+    layer: 'above traces',
     autorange: true
   };
 

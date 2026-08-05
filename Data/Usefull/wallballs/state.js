@@ -11,5 +11,6 @@ const state = {
   specMin: 0.0,
   specMax: 0.5,
   lastSignal: null,
+  specSource: 'original',
   data: null
 };

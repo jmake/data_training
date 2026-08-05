@@ -154,6 +154,11 @@ document.getElementById('wb-spec-max-slider').addEventListener('input', e => {
   renderCharts();
 });
 
+document.getElementById('wb-spec-source').addEventListener('change', e => {
+  state.specSource = e.target.value;
+  renderCharts();
+});
+
 // Toggle plot visibilities on title clicks
 const plotToggles = [
   { titleSel: '.processing-title', plotId: 'wb-processing-content', innerPlots: ['wb-time-plot'] },

@@ -4,3 +4,5 @@
 
 - Never perform file modifications or run modifying commands without first presenting a proposed implementation plan and receiving explicit, separate-turn user authorization.
 
+- Never use LaTeX equations or LaTeX mathematical formatting in conversational responses. Write math formulas, variables, and calculations using standard text, plain HTML, or standard markdown.
+
