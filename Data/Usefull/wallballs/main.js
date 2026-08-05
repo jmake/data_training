@@ -154,20 +154,28 @@ document.getElementById('wb-spec-max-slider').addEventListener('input', e => {
   renderCharts();
 });
 
-// Toggle Heart Rate plot visibility on header click
-const hrHeader = document.querySelector('.chart-header.hr');
-const hrPlot = document.getElementById('wb-hr-plot');
-if (hrHeader && hrPlot) {
-  hrHeader.style.cursor = 'pointer';
-  hrHeader.addEventListener('click', () => {
-    if (hrPlot.style.display === 'none') {
-      hrPlot.style.display = 'block';
-      Plotly.Plots.resize(hrPlot);
-    } else {
-      hrPlot.style.display = 'none';
-    }
-  });
-}
+// Toggle plot visibilities on title clicks
+const plotToggles = [
+  { titleSel: '.time-title', plotId: 'wb-time-plot' },
+  { titleSel: '.hr-title', plotId: 'wb-hr-plot' },
+  { titleSel: '.spec-title', plotId: 'wb-spec-title' }
+];
+
+plotToggles.forEach(t => {
+  const titleEl = document.querySelector(t.titleSel);
+  const plot = document.getElementById(t.plotId === 'wb-spec-title' ? 'wb-spec-plot' : t.plotId); // fix plot vs title id mismatch
+  if (titleEl && plot) {
+    titleEl.style.cursor = 'pointer';
+    titleEl.addEventListener('click', () => {
+      if (plot.style.display === 'none') {
+        plot.style.display = 'block';
+        Plotly.Plots.resize(plot);
+      } else {
+        plot.style.display = 'none';
+      }
+    });
+  }
+});
 
 // Initial Load & Poll
 fetchData();
