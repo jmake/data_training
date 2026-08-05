@@ -156,10 +156,12 @@ document.getElementById('wb-spec-max-slider').addEventListener('input', e => {
 
 // Toggle plot visibilities on title clicks
 const plotToggles = [
-  { titleSel: '.processing-title', plotId: 'wb-processing-content' },
-  { titleSel: '.time-title', plotId: 'wb-time-plot' },
-  { titleSel: '.hr-title', plotId: 'wb-hr-plot' },
-  { titleSel: '.spec-title', plotId: 'wb-spec-plot' }
+  { titleSel: '.processing-title', plotId: 'wb-processing-content', innerPlots: ['wb-time-plot'] },
+  { titleSel: '.time-title', plotId: 'wb-time-plot', innerPlots: ['wb-time-plot'] },
+  { titleSel: '.hr-analysis-title', plotId: 'wb-hr-analysis-content', innerPlots: ['wb-hr-plot'] },
+  { titleSel: '.hr-title', plotId: 'wb-hr-plot', innerPlots: ['wb-hr-plot'] },
+  { titleSel: '.spec-analysis-title', plotId: 'wb-spec-analysis-content', innerPlots: ['wb-spec-plot'] },
+  { titleSel: '.spec-title', plotId: 'wb-spec-plot', innerPlots: ['wb-spec-plot'] }
 ];
 
 plotToggles.forEach(t => {
@@ -169,12 +171,12 @@ plotToggles.forEach(t => {
     titleEl.style.cursor = 'pointer';
     titleEl.addEventListener('click', () => {
       if (plot.style.display === 'none') {
-        plot.style.display = t.plotId === 'wb-processing-content' ? 'flex' : 'block';
-        if (t.plotId === 'wb-processing-content') {
-          const timePlot = document.getElementById('wb-time-plot');
-          if (timePlot) Plotly.Plots.resize(timePlot);
-        } else {
-          Plotly.Plots.resize(plot);
+        plot.style.display = t.plotId.endsWith('-content') ? 'flex' : 'block';
+        if (t.innerPlots) {
+          t.innerPlots.forEach(pId => {
+            const innerPlot = document.getElementById(pId);
+            if (innerPlot) Plotly.Plots.resize(innerPlot);
+          });
         }
       } else {
         plot.style.display = 'none';
