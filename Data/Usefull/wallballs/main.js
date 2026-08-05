@@ -8,6 +8,7 @@ async function fetchData() {
       headers['If-None-Match'] = etag;
     }
     const url = `/data/wallballs?clean=${state.clean}&seg_method=${state.segMethod}&seg_mode=${state.segMode}` + 
+                `&signal=${state.signal}&low_cut=${state.lowCut}&high_cut=${state.highCut}&acc_seg=${state.accSeg}` +
                 (state.hrFreq ? `&hr_freq=${state.hrFreq}` : '');
     const res = await fetch(url, { headers });
     if (res.status === 304) {
@@ -127,7 +128,7 @@ function renderCharts() {
 // Event Listeners
 document.getElementById('wb-signal').addEventListener('change', e => {
   state.signal = e.target.value;
-  renderCharts();
+  fetchData();
 });
 
 document.getElementById('wb-clean').addEventListener('change', e => {
@@ -138,14 +139,14 @@ document.getElementById('wb-clean').addEventListener('change', e => {
 document.getElementById('wb-low-cut').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     state.lowCut = parseFloat(e.target.value) || 0;
-    renderCharts();
+    fetchData();
   }
 });
 
 document.getElementById('wb-high-cut').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     state.highCut = parseFloat(e.target.value) || 0;
-    renderCharts();
+    fetchData();
   }
 });
 
@@ -173,6 +174,11 @@ document.getElementById('wb-seg-method').addEventListener('change', e => {
 document.getElementById('wb-seg-mode').addEventListener('change', e => {
   state.segMode = e.target.value;
   state.hrFreq = null; // Reset to auto
+  fetchData();
+});
+
+document.getElementById('wb-acc-seg').addEventListener('change', e => {
+  state.accSeg = e.target.value;
   fetchData();
 });
 

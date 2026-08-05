@@ -100,6 +100,40 @@ function renderTimeDomain(data, state) {
       });
     });
   }
+  if (data.acc_segments && data.acc_segments.length > 0) {
+    const accColors = [
+      'rgba(34, 197, 94, 0.03)',
+      'rgba(34, 197, 94, 0.07)'
+    ];
+    data.acc_segments.forEach((seg, i) => {
+      shapes.push({
+        type: 'rect',
+        xref: 'x',
+        yref: 'paper',
+        x0: seg.x0,
+        x1: seg.x1,
+        y0: 0,
+        y1: 1,
+        fillcolor: accColors[i % 2],
+        line: { width: 0 },
+        layer: 'below'
+      });
+    });
+  }
+  if (data.acc_peaks && data.acc_peaks.length > 0) {
+    data.acc_peaks.forEach(peak => {
+      shapes.push({
+        type: 'line',
+        xref: 'x',
+        yref: 'paper',
+        x0: peak,
+        x1: peak,
+        y0: 0,
+        y1: 1,
+        line: { color: 'rgba(34, 197, 94, 0.5)', width: 1, dash: 'dash' }
+      });
+    });
+  }
   layout.shapes = shapes;
 
   const timePlotCfg = {
