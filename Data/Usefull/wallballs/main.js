@@ -145,15 +145,13 @@ document.getElementById('wb-low-cut').addEventListener('keydown', e => {
 document.getElementById('wb-high-cut').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     state.highCut = parseFloat(e.target.value) || 0;
-    state.reconRate = state.highCut > 0 ? 2 * state.highCut : 50;
-    document.getElementById('wb-recon-rate').value = state.reconRate.toFixed(1);
     renderCharts();
   }
 });
 
 document.getElementById('wb-recon-rate').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
-    state.reconRate = parseFloat(e.target.value) || (state.highCut > 0 ? 2 * state.highCut : 50);
+    state.reconRate = parseFloat(e.target.value) || 20;
     renderCharts();
   }
 });
