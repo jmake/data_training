@@ -18,6 +18,12 @@ async function fetchData() {
     etag = res.headers.get('ETag');
     state.data = await res.json();
 
+    // Populate editable ACC copies
+    state.accPeaks = state.data.acc_peaks ? [...state.data.acc_peaks] : [];
+    state.accSegments = state.data.acc_segments ? [...state.data.acc_segments] : [];
+    const resetGroup = document.getElementById('wb-acc-reset-group');
+    if (resetGroup) resetGroup.style.display = state.accPeaks.length > 0 ? 'flex' : 'none';
+
     // Show / Hide custom frequency group based on segMode
     const freqGroup = document.getElementById('wb-hr-freq-group');
     if (state.segMethod === 'peaks' && state.segMode === 'distance') {
@@ -108,6 +114,26 @@ async function fetchData() {
           if (state.data) {
             renderSpectrogram(state.data, state);
           }
+        });
+
+        timePlot.on('plotly_click', ev => {
+          if (!ev || !ev.points || ev.points.length === 0) return;
+          if (!state.accPeaks || state.accPeaks.length === 0) return;
+          const clickedX = ev.points[0].x;
+          const xRange = timePlot._fullLayout.xaxis.range;
+          const tolerance = (xRange[1] - xRange[0]) * 0.01;
+          const idx = state.accPeaks.findIndex(p => Math.abs(p - clickedX) <= tolerance);
+          if (idx === -1) return;
+          state.accPeaks.splice(idx, 1);
+          // Recalculate segments from remaining peaks
+          const tStart = state.data.acc.t[0];
+          const tEnd = state.data.acc.t[state.data.acc.t.length - 1];
+          const allPoints = [tStart, ...state.accPeaks, tEnd].sort((a, b) => a - b);
+          state.accSegments = [];
+          for (let i = 0; i < allPoints.length - 1; i++) {
+            state.accSegments.push({ x0: allPoints[i], x1: allPoints[i + 1] });
+          }
+          renderTimeDomain(state.data, state);
         });
       }
 
@@ -256,6 +282,14 @@ plotToggles.forEach(t => {
       }
     });
   }
+});
+
+// Reset ACC Segments
+document.getElementById('wb-acc-reset').addEventListener('click', () => {
+  if (!state.data) return;
+  state.accPeaks = state.data.acc_peaks ? [...state.data.acc_peaks] : [];
+  state.accSegments = state.data.acc_segments ? [...state.data.acc_segments] : [];
+  renderTimeDomain(state.data, state);
 });
 
 // Initial Load & Poll

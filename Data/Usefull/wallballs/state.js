@@ -13,6 +13,8 @@ const state = {
   lastSignal: null,
   specSource: 'original',
   accSeg: 'none',
+  accPeaks: [],
+  accSegments: [],
   selectedTimeRange: null,
   selectedFreqRange: null,
   data: null
