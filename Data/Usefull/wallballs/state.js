@@ -12,5 +12,7 @@ const state = {
   specMax: 0.5,
   lastSignal: null,
   specSource: 'original',
+  selectedTimeRange: null,
+  selectedFreqRange: null,
   data: null
 };

@@ -39,10 +39,74 @@ async function fetchData() {
           const selectedCount = ev && ev.points ? ev.points.length : 0;
           const totalCount = timePlot.data && timePlot.data[1] && timePlot.data[1].x ? timePlot.data[1].x.length : 0;
           timeStatusEl.textContent = `(${selectedCount} / ${totalCount} pts)`;
+
+          if (selectedCount > 0) {
+            const times = ev.points.map(p => p.x);
+            const tMin = Math.min(...times);
+            const tMax = Math.max(...times);
+            state.selectedTimeRange = [tMin, tMax];
+
+            if (state.specData) {
+              const spec = state.specData;
+              const selectedTimeIndices = [];
+              for (let i = 0; i < spec.t.length; i++) {
+                if (spec.t[i] >= tMin && spec.t[i] <= tMax) {
+                  selectedTimeIndices.push(i);
+                }
+              }
+
+              if (selectedTimeIndices.length > 0) {
+                let maxPower = -Infinity;
+                selectedTimeIndices.forEach(col => {
+                  for (let row = 0; row < spec.Sxx.length; row++) {
+                    const power = spec.Sxx[row][col];
+                    if (power > maxPower) maxPower = power;
+                  }
+                });
+
+                const threshold = 0.1 * maxPower;
+                let minF = Infinity;
+                let maxF = -Infinity;
+                selectedTimeIndices.forEach(col => {
+                  for (let row = 0; row < spec.Sxx.length; row++) {
+                    const power = spec.Sxx[row][col];
+                    if (power >= threshold) {
+                      const f = spec.f[row];
+                      if (f < minF) minF = f;
+                      if (f > maxF) maxF = f;
+                    }
+                  }
+                });
+
+                if (minF !== Infinity && maxF !== -Infinity) {
+                  state.selectedFreqRange = [minF, maxF];
+                } else {
+                  state.selectedFreqRange = null;
+                }
+              } else {
+                state.selectedFreqRange = null;
+              }
+            } else {
+              state.selectedFreqRange = null;
+            }
+          } else {
+            state.selectedTimeRange = null;
+            state.selectedFreqRange = null;
+          }
+
+          if (state.data) {
+            renderSpectrogram(state.data, state);
+          }
         });
+
         timePlot.on('plotly_doubleclick', () => {
           const totalCount = timePlot.data && timePlot.data[1] && timePlot.data[1].x ? timePlot.data[1].x.length : 0;
           timeStatusEl.textContent = `(0 / ${totalCount} pts)`;
+          state.selectedTimeRange = null;
+          state.selectedFreqRange = null;
+          if (state.data) {
+            renderSpectrogram(state.data, state);
+          }
         });
       }
 

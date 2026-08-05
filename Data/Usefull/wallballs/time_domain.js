@@ -50,7 +50,8 @@ function renderTimeDomain(data, state) {
       y: reconPower,
       type: 'scatter',
       mode: 'lines',
-      name: 'Power Filtered',
+      name: 'PowerA',
+      visible: 'legendonly',
       line: { color: '#eab308', width: 1.5 }
     }
   ];

@@ -17,6 +17,7 @@ function renderSpectrogram(data, state) {
 
   // Compute spectrogram using 1024 segment size, 896 overlap, up to Nyquist limit
   const spec = computeSpectrogram(targetSignal, fs, 1024, 896);
+  state.specData = spec;
 
   // Find absolute minimum and maximum power values in the spectrogram
   let minVal = Infinity;
@@ -97,6 +98,27 @@ function renderSpectrogram(data, state) {
 
   // Peak division lines (Alternative 1)
   const shapes = [];
+
+  // Target box around selection coordinates (Time + Frequency)
+  if (state.selectedTimeRange && state.selectedFreqRange) {
+    shapes.push({
+      type: 'rect',
+      xref: 'x',
+      yref: 'y',
+      x0: state.selectedTimeRange[0],
+      x1: state.selectedTimeRange[1],
+      y0: Math.log10(state.selectedFreqRange[0]),
+      y1: Math.log10(state.selectedFreqRange[1]),
+      fillcolor: 'rgba(249, 115, 22, 0.15)',
+      line: {
+        color: '#f97316',
+        width: 2,
+        dash: 'dot'
+      },
+      layer: 'above'
+    });
+  }
+
   if (data.hr_peaks) {
     data.hr_peaks.forEach(peak => {
       shapes.push({
