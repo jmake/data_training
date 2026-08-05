@@ -60,9 +60,20 @@ function renderSpectrogram(data, state) {
     maxSlider.value = state.specMax;
   }
 
+  // Generate hover text to display physical frequency values
+  const hoverText = [];
+  for (let y = 0; y < spec.f.length; y++) {
+    const f = spec.f[y];
+    const row = [];
+    for (let x = 0; x < spec.t.length; x++) {
+      row.push(f.toFixed(2));
+    }
+    hoverText.push(row);
+  }
+
   const trace = {
     x: spec.t,
-    y: spec.f,
+    y: spec.f.map(f => Math.log10(f)), // Map to log10 coordinates directly
     z: spec.Sxx,
     type: 'heatmap',
     zmin: state.specMin,
@@ -77,9 +88,10 @@ function renderSpectrogram(data, state) {
       len: 0.6,
       tickfont: { color: '#9ca3af', size: 9 }
     },
+    text: hoverText,
     hovertemplate: 
       'Time: %{x:.2f}s<br>' +
-      'Frequency: %{y:.2f} Hz<br>' +
+      'Frequency: %{text} Hz<br>' +
       'Power: %{z:.6f} g²<extra></extra>'
   };
 
@@ -100,6 +112,22 @@ function renderSpectrogram(data, state) {
     });
   }
 
+  // Draw horizontal gridlines above the heatmap for the main ticks (0.1, 1.0, 10.0 Hz)
+  const mainYTicks = [0.1, 1.0, 10.0];
+  mainYTicks.forEach(v => {
+    shapes.push({
+      type: 'line',
+      xref: 'paper',
+      yref: 'y',
+      x0: 0,
+      x1: 1,
+      y0: Math.log10(v),
+      y1: Math.log10(v),
+      line: { color: 'rgba(255, 255, 255, 0.2)', width: 1 },
+      layer: 'above'
+    });
+  });
+
   const el = document.getElementById('wb-spec-plot');
   const xa = el && el._fullLayout && el._fullLayout.xaxis;
   
@@ -108,30 +136,22 @@ function renderSpectrogram(data, state) {
   layout.showlegend = false;
   layout.shapes = shapes;
   
-  // Set Y-axis to logarithmic with custom clean ticks and intermediate gridlines
+  // Set Y-axis to linear with custom ticks mapped to log10 space
   const yTicksHz = [
     0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
     1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
     10.0, 20.0
   ];
+  const tickVals = yTicksHz.map(v => Math.log10(v));
   const tickText = yTicksHz.map(v => (v === 0.1 || v === 1.0 || v === 10.0) ? v.toString() : "");
-
-  layout.xaxis = {
-    ...layout.xaxis,
-    showgrid: true,
-    gridcolor: 'rgba(255,255,255,1.0)',
-    layer: 'above traces'
-  };
 
   layout.yaxis = {
     ...layout.yaxis,
-    type: 'log',
-    tickvals: yTicksHz,
+    type: 'linear', // Use linear axis with log data to bypass Plotly bugs
+    tickvals: tickVals,
     ticktext: tickText,
-    showgrid: true,
-    gridcolor: 'rgba(255,255,255,1.0)',
-    layer: 'above traces',
-    autorange: true
+    range: [Math.log10(0.1), Math.log10(25.0)],
+    autorange: false
   };
 
   Plotly.react('wb-spec-plot', [trace], layout, PLOTLY_CFG);
