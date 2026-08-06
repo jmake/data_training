@@ -217,7 +217,7 @@ def load_session(name, clean="raw", seg_method="none", seg_mode="prominence", hr
 
     acc_peaks = []
     acc_segments = []
-    if name == "wallballs" and acc_seg in ("mins", "maxs") and len(acc["t"]) > 2:
+    if name == "wallballs" and acc_seg in ("mins", "maxs", "zeros", "critical", "inflection") and len(acc["t"]) > 2:
         from scipy.signal import find_peaks
         import numpy as np
         sig_data = acc.get(sig_name, acc["x"])
@@ -242,10 +242,21 @@ def load_session(name, clean="raw", seg_method="none", seg_mode="prominence", hr
         if prom <= 0:
             prom = 0.1
 
+        peaks_idx = []
         if acc_seg == "maxs":
             peaks_idx, _ = find_peaks(filtered, prominence=prom, distance=15)
-        else:
+        elif acc_seg == "mins":
             peaks_idx, _ = find_peaks(-filtered, prominence=prom, distance=15)
+        elif acc_seg == "critical":
+            maxs_idx, _ = find_peaks(filtered, prominence=prom, distance=15)
+            mins_idx, _ = find_peaks(-filtered, prominence=prom, distance=15)
+            peaks_idx = np.sort(np.concatenate((maxs_idx, mins_idx)))
+        elif acc_seg == "zeros":
+            peaks_idx = np.where(np.diff(np.sign(filtered)))[0]
+        elif acc_seg == "inflection":
+            grad1 = np.gradient(filtered)
+            grad2 = np.gradient(grad1)
+            peaks_idx = np.where(np.diff(np.sign(grad2)))[0]
 
         acc_peaks = [float(acc["t"][idx]) for idx in peaks_idx]
         all_points = [float(acc["t"][0])] + acc_peaks + [float(acc["t"][-1])]
