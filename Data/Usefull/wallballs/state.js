@@ -15,6 +15,7 @@ const state = {
   accSeg: 'none',
   accPeaks: [],
   accSegments: [],
+  loadedCustomSegments: {},
   selectedTimeRange: null,
   selectedFreqRange: null,
   data: null

@@ -134,6 +134,54 @@ function renderTimeDomain(data, state) {
       });
     });
   }
+
+  if (state.loadedCustomSegments) {
+    const hexToRgba = (hex, alpha) => {
+      if (!hex || !hex.startsWith('#')) return 'rgba(0,0,0,0.15)';
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    for (const [sig, segData] of Object.entries(state.loadedCustomSegments)) {
+      if (!segData.visible) continue;
+      
+      const fillColor = hexToRgba(segData.color, 0.15);
+
+      if (segData.segments && segData.segments.length > 0) {
+        segData.segments.forEach(seg => {
+          shapes.push({
+            type: 'rect',
+            xref: 'x',
+            yref: 'paper',
+            x0: seg.x0,
+            x1: seg.x1,
+            y0: 0,
+            y1: 1,
+            fillcolor: fillColor,
+            line: { width: 0 },
+            layer: 'below'
+          });
+        });
+      }
+      if (segData.peaks && segData.peaks.length > 0) {
+        segData.peaks.forEach(peak => {
+          shapes.push({
+            type: 'line',
+            xref: 'x',
+            yref: 'paper',
+            x0: peak,
+            x1: peak,
+            y0: 0,
+            y1: 1,
+            line: { color: segData.color, width: 2, dash: 'dot' }
+          });
+        });
+      }
+    }
+  }
+
   layout.shapes = shapes;
 
   const timePlotCfg = {

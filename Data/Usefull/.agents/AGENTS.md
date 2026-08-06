@@ -8,3 +8,4 @@
 
 - Never use LaTeX equations or LaTeX mathematical formatting in conversational responses. Write math formulas, variables, and calculations using standard text, plain HTML, or standard markdown.
 
+- Keep the Python and JS/JSON code as modular as possible to prevent files from growing too large.

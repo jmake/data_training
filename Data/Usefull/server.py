@@ -445,8 +445,28 @@ class Handler(BaseHTTPRequestHandler):
                 data = json.loads(post_data.decode('utf-8'))
                 session_name = data.get("session", "wallballs")
                 fpath = os.path.join(BASE, f"custom_segments_{session_name}.json")
+                existing_data = []
+                if os.path.exists(fpath):
+                    with open(fpath, "r") as f:
+                        try:
+                            existing_data = json.load(f)
+                            if not isinstance(existing_data, list):
+                                existing_data = []
+                        except json.JSONDecodeError:
+                            existing_data = []
+                
+                # Check if this signal+method already exists and replace it
+                found = False
+                for i, entry in enumerate(existing_data):
+                    if entry.get("signal") == data.get("signal") and entry.get("method") == data.get("method"):
+                        existing_data[i] = data
+                        found = True
+                        break
+                
+                if not found:
+                    existing_data.append(data)
                 with open(fpath, "w") as f:
-                    json.dump(data, f)
+                    json.dump(existing_data, f, indent=2)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
