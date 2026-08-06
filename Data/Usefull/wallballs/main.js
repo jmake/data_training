@@ -22,7 +22,7 @@ async function fetchData() {
     state.accPeaks = state.data.acc_peaks ? [...state.data.acc_peaks] : [];
     state.accSegments = state.data.acc_segments ? [...state.data.acc_segments] : [];
     const resetGroup = document.getElementById('wb-acc-reset-group');
-    if (resetGroup) resetGroup.style.display = state.accPeaks.length > 0 ? 'flex' : 'none';
+    if (resetGroup) resetGroup.style.display = 'flex';
 
     // Show / Hide custom frequency group based on segMode
     const freqGroup = document.getElementById('wb-hr-freq-group');
