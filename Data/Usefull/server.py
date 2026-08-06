@@ -178,15 +178,15 @@ def compute_stats(acc, hr):
 
 # ── Cache + load ──────────────────────────────────────────────────────────────
 
-def load_session(name, clean="raw", seg_method="none", seg_mode="prominence", hr_freq=None, sig_name="x", low_cut=0.0, high_cut=2.0, acc_seg="none"):
+def load_session(name, clean="raw", seg_method="none", seg_mode="prominence", hr_freq=None, sig_name="x", math_op="curve", low_cut=0.0, high_cut=2.0, acc_seg="none"):
     sess      = SESSIONS[name]
     acc_path  = os.path.join(BASE, sess["acc"])
     hr_path   = os.path.join(BASE, sess["hr"])
 
     acc_mt    = os.path.getmtime(acc_path)
     hr_mt     = os.path.getmtime(hr_path)
-    cache_key = f"{name}_{clean}_{seg_method}_{seg_mode}_{hr_freq}_{sig_name}_{low_cut}_{high_cut}_{acc_seg}"
-    etag      = f'"{hash((acc_mt, hr_mt, clean, seg_method, seg_mode, hr_freq, sig_name, low_cut, high_cut, acc_seg))}"'
+    cache_key = f"{name}_{clean}_{seg_method}_{seg_mode}_{hr_freq}_{sig_name}_{math_op}_{low_cut}_{high_cut}_{acc_seg}"
+    etag      = f'"{hash((acc_mt, hr_mt, clean, seg_method, seg_mode, hr_freq, sig_name, math_op, low_cut, high_cut, acc_seg))}"'
 
     cached = _cache.get(cache_key)
     if cached and cached["etag"] == etag:
@@ -195,6 +195,16 @@ def load_session(name, clean="raw", seg_method="none", seg_mode="prominence", hr
     acc_raw = read_acc(acc_path)
     acc     = CLEANERS.get(clean, CLEANERS["raw"])(acc_raw)
     hr      = read_hr(hr_path)
+
+    if sig_name in acc and len(acc["t"]) > 1:
+        import numpy as np
+        import scipy.integrate as integrate
+        t_arr = np.array(acc["t"])
+        sig_arr = np.array(acc[sig_name])
+        if math_op == "derivative":
+            acc[sig_name] = np.gradient(sig_arr, t_arr).tolist()
+        elif math_op == "integral":
+            acc[sig_name] = integrate.cumulative_trapezoid(sig_arr, t_arr, initial=0).tolist()
 
     hr_peaks = []
     hr_segments = []
@@ -394,6 +404,7 @@ class Handler(BaseHTTPRequestHandler):
                     pass
 
             sig_name = params.get("signal", ["x"])[0]
+            math_op = params.get("math_op", ["curve"])[0]
             try:
                 low_cut = float(params.get("low_cut", [0.0])[0])
             except ValueError:
@@ -404,7 +415,7 @@ class Handler(BaseHTTPRequestHandler):
                 high_cut = 2.0
             acc_seg = params.get("acc_seg", ["none"])[0]
 
-            payload, etag = load_session(name, clean, seg_method, seg_mode, hr_freq, sig_name, low_cut, high_cut, acc_seg)
+            payload, etag = load_session(name, clean, seg_method, seg_mode, hr_freq, sig_name, math_op, low_cut, high_cut, acc_seg)
 
             if self.headers.get("If-None-Match") == etag:
                 self.send_response(304); self.end_headers(); return

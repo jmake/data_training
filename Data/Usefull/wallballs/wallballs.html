@@ -27,12 +27,19 @@
           <div class="card-header-tag">Signal & Filtering</div>
           <div class="control-group">
             <span class="control-label">Signal</span>
-            <select id="wb-signal" class="clean-select">
-              <option value="x" selected>ACC X</option>
-              <option value="y">ACC Y</option>
-              <option value="z">ACC Z</option>
-              <option value="mag">Magnitude</option>
-            </select>
+            <div style="display: flex; gap: 4px;">
+              <select id="wb-signal" class="clean-select">
+                <option value="x" selected>ACC X</option>
+                <option value="y">ACC Y</option>
+                <option value="z">ACC Z</option>
+                <option value="mag">Magnitude</option>
+              </select>
+              <select id="wb-math-op" class="clean-select">
+                <option value="curve" selected>Curve</option>
+                <option value="derivative">Derivative</option>
+                <option value="integral">Integral</option>
+              </select>
+            </div>
           </div>
           <div class="control-group">
             <span class="control-label">Cleaning</span>

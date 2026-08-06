@@ -8,7 +8,7 @@ async function fetchData() {
       headers['If-None-Match'] = etag;
     }
     const url = `/data/wallballs?clean=${state.clean}&seg_method=${state.segMethod}&seg_mode=${state.segMode}` + 
-                `&signal=${state.signal}&low_cut=${state.lowCut}&high_cut=${state.highCut}&acc_seg=${state.accSeg}` +
+                `&signal=${state.signal}&math_op=${state.mathOp}&low_cut=${state.lowCut}&high_cut=${state.highCut}&acc_seg=${state.accSeg}` +
                 (state.hrFreq ? `&hr_freq=${state.hrFreq}` : '');
     const res = await fetch(url, { headers });
     if (res.status === 304) {
@@ -155,6 +155,11 @@ function renderCharts() {
 // Event Listeners
 document.getElementById('wb-signal').addEventListener('change', e => {
   state.signal = e.target.value;
+  fetchData();
+});
+
+document.getElementById('wb-math-op').addEventListener('change', e => {
+  state.mathOp = e.target.value;
   fetchData();
 });
 

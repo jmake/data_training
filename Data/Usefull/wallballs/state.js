@@ -1,6 +1,7 @@
 // Global State
 const state = {
   signal: 'x',
+  mathOp: 'curve',
   clean: 'iqr',
   lowCut: 0,
   highCut: 2.0,
