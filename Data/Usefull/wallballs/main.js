@@ -325,6 +325,5 @@ document.getElementById('wb-acc-reset').addEventListener('click', () => {
   renderTimeDomain(state.data, state);
 });
 
-// Initial Load & Poll
+// Initial Load
 fetchData();
-setInterval(fetchData, 3000);
