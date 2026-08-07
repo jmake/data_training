@@ -46,7 +46,8 @@ class ConfigManager:
                 "hr": None,
                 "spec": None
             },
-            "segmentsFile": None
+            "segmentsFile": None,
+            "loadedSegments": []
         }
         
         try:

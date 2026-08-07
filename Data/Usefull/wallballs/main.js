@@ -537,6 +537,8 @@ document.getElementById('wb-session-select').addEventListener('change', async e 
 
   // Clear previously loaded segment data
   cachedLoadData = [];
+  state.loadedCustomSegments = {};
+  updateLoadedSegmentsUI();
   populateLoadDropdown();
   
   // Call load_config to ensure the config file is created on the backend
@@ -603,7 +605,8 @@ document.getElementById('wb-btn-save-config').addEventListener('click', async ()
       hr:   getRange('wb-hr-plot'),
       spec: getRange('wb-spec-plot')
     },
-    segmentsFile: state.segmentsFile
+    segmentsFile: state.segmentsFile,
+    loadedSegments: Object.keys(state.loadedCustomSegments || {})
   };
 
   try {
