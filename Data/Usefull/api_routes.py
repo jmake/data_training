@@ -5,6 +5,7 @@ import numpy as np
 from data_loader import BASE, SESSIONS, read_acc
 import data_loader
 from signal_processing import CLEANERS, load_session
+from config_manager import config_manager
 
 
 def handle_get_sessions(handler, params):
@@ -78,6 +79,45 @@ def handle_save_segments(handler, post_data):
         handler.send_response(500)
         handler.end_headers()
         print("Error saving segments:", e)
+
+def handle_save_config(handler, post_data):
+    try:
+        data = json.loads(post_data.decode('utf-8'))
+        session_name = data.get("session_name")
+        if not session_name:
+            handler.send_response(400)
+            handler.end_headers()
+            return
+            
+        success = config_manager.save_config(session_name, data)
+        if success:
+            handler.send_response(200)
+            handler.send_header("Content-Type", "application/json")
+            handler.end_headers()
+            handler.wfile.write(b'{"status": "ok"}')
+        else:
+            handler.send_response(500)
+            handler.end_headers()
+    except Exception as e:
+        handler.send_response(500)
+        handler.end_headers()
+        print("Error saving config:", e)
+
+def handle_load_config(handler, params):
+    session_name = params.get("session_name", [""])[0]
+    if not session_name:
+        handler.send_response(400)
+        handler.end_headers()
+        return
+        
+    cfg = config_manager.load_config(session_name)
+    payload = json.dumps(cfg).encode()
+    handler.send_response(200)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Access-Control-Allow-Origin", "*")
+    handler.send_header("Content-Length", str(len(payload)))
+    handler.end_headers()
+    handler.wfile.write(payload)
 
 def handle_scan_path(handler, post_data):
     try:

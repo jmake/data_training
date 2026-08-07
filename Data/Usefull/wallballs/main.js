@@ -510,16 +510,31 @@ async function initApp() {
     console.error('Failed to load sessions:', e);
   }
 
+  if (state.sessionName) {
+    try {
+      await fetch(`/load_config?session_name=${state.sessionName}`);
+    } catch (err) {
+      console.error('Error triggering initial config load:', err);
+    }
+  }
+
   fetchData();
 }
 
-document.getElementById('wb-session-select').addEventListener('change', e => {
+document.getElementById('wb-session-select').addEventListener('change', async e => {
   state.sessionName = e.target.value;
   etag = null;
 
   // Clear previously loaded segment data
   cachedLoadData = [];
   populateLoadDropdown();
+  
+  // Call load_config to ensure the config file is created on the backend
+  try {
+    await fetch(`/load_config?session_name=${state.sessionName}`);
+  } catch (err) {
+    console.error('Error triggering config load:', err);
+  }
 
   fetchData();
 });
@@ -548,6 +563,52 @@ document.getElementById('wb-btn-scan').addEventListener('click', async () => {
   } catch (e) {
     console.error('Scan failed', e);
     alert('Failed to connect to server for scanning.');
+  }
+});
+
+// Save Config button
+document.getElementById('wb-btn-save-config').addEventListener('click', async () => {
+  const getRange = (id) => {
+    const el = document.getElementById(id);
+    if (el && el._fullLayout && el._fullLayout.xaxis && el._fullLayout.xaxis.range) {
+      return el._fullLayout.xaxis.range.slice();
+    }
+    return null;
+  };
+
+  const cfg = {
+    session_name: state.sessionName,
+    clean:        state.clean,
+    segMethod:    state.segMethod,
+    segMode:      state.segMode,
+    signal:       state.signal,
+    mathOp:       state.mathOp,
+    lowCut:       state.lowCut,
+    highCut:      state.highCut,
+    accSeg:       state.accSeg,
+    hrFreq:       state.hrFreq,
+    axisRanges: {
+      time: getRange('wb-time-plot'),
+      hr:   getRange('wb-hr-plot'),
+      spec: getRange('wb-spec-plot')
+    },
+    segmentsFile: Object.keys(state.loadedCustomSegments || {}).length > 0 ? `wallballs_segments_${state.sessionName}.json` : null
+  };
+
+  try {
+    const res = await fetch('/save_config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg)
+    });
+    if (res.ok) {
+      alert(`Config saved for session ${state.sessionName}`);
+    } else {
+      alert('Failed to save config.');
+    }
+  } catch (err) {
+    console.error('Save config error:', err);
+    alert('Failed to connect to server for saving config.');
   }
 });
 
