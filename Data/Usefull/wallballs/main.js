@@ -247,8 +247,16 @@ async function populateLoadDropdown() {
         opt.textContent = sig;
         sigSelect.appendChild(opt);
       }
+      const loadBtn = document.getElementById('wb-acc-load-data');
+      if (loadBtn) loadBtn.disabled = (signals.length === 0);
+    } else {
+      const loadBtn = document.getElementById('wb-acc-load-data');
+      if (loadBtn) loadBtn.disabled = true;
     }
-  } catch(e) {}
+  } catch(e) {
+    const loadBtn = document.getElementById('wb-acc-load-data');
+    if (loadBtn) loadBtn.disabled = true;
+  }
 }
 
 document.getElementById('wb-acc-load-sig').addEventListener('change', (e) => {
@@ -389,7 +397,15 @@ document.getElementById('wb-acc-reset').addEventListener('click', () => {
   // Clear currently loaded segments list
   state.loadedCustomSegments = {};
   updateLoadedSegmentsUI();
-  if (state.data) renderTimeDomain(state.data, state);
+
+  // Reset segregation method to None
+  const accSegEl = document.getElementById('wb-acc-seg');
+  if (accSegEl) accSegEl.value = 'none';
+  state.accSeg = 'none';
+
+  // Fetch clean data to fully reset the UI
+  etag = null;
+  fetchData();
 });
 
 document.getElementById('wb-hr-freq').addEventListener('keydown', e => {
@@ -468,13 +484,7 @@ plotToggles.forEach(t => {
   }
 });
 
-// Reset ACC Segments
-document.getElementById('wb-acc-reset').addEventListener('click', () => {
-  if (!state.data) return;
-  state.accPeaks = state.data.acc_peaks ? [...state.data.acc_peaks] : [];
-  state.accSegments = state.data.acc_segments ? [...state.data.acc_segments] : [];
-  renderTimeDomain(state.data, state);
-});
+
 
 // Start app
 async function initApp() {
