@@ -23,6 +23,12 @@ SESSIONS = {
 def scan_sessions(root_dir):
     global CURRENT_SCAN_PATH
     CURRENT_SCAN_PATH = root_dir
+    
+    # Clear previously scanned dynamic sessions (13-digit numeric keys)
+    keys_to_remove = [k for k in SESSIONS if k.isdigit() and len(k) == 13]
+    for k in keys_to_remove:
+        del SESSIONS[k]
+        
     temp_groups = {}
     
     # Recursively find all files

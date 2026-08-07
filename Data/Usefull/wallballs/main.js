@@ -484,25 +484,25 @@ async function initApp() {
       const select = document.getElementById('wb-session-select');
       select.innerHTML = '';
       
-      data.sessions.forEach(sess => {
+      // Filter strictly to numeric timestamps and sort chronologically
+      const validSessions = data.sessions
+        .filter(sess => sess.length === 13 && !isNaN(sess))
+        .sort((a, b) => parseInt(a) - parseInt(b));
+      
+      validSessions.forEach(sess => {
         const option = document.createElement('option');
         option.value = sess;
         
-        if (sess.length === 13 && !isNaN(sess)) {
-          // It's a timestamp, format it nicely
-          const d = new Date(parseInt(sess));
-          const dateStr = d.toLocaleDateString(undefined, {month: 'short', day: '2-digit', year: 'numeric'});
-          const timeStr = d.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'});
-          option.textContent = `${dateStr} - ${timeStr}`;
-        } else {
-          option.textContent = sess;
-        }
+        const d = new Date(parseInt(sess));
+        const dateStr = d.toLocaleDateString(undefined, {month: 'short', day: '2-digit', year: 'numeric'});
+        const timeStr = d.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'});
+        option.textContent = `${dateStr} - ${timeStr}`;
         
         select.appendChild(option);
       });
       
-      if (data.sessions.length > 0) {
-        state.sessionName = data.sessions.includes('1785393791901') ? '1785393791901' : data.sessions[0];
+      if (validSessions.length > 0) {
+        state.sessionName = validSessions.includes('1785393791901') ? '1785393791901' : validSessions[0];
         select.value = state.sessionName;
       }
     }
