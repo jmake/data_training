@@ -310,6 +310,7 @@ document.getElementById('wb-acc-save').addEventListener('click', async () => {
       })
     });
     console.log('Segments saved successfully');
+    state.segmentsFile = `wallballs_segments_${state.sessionName}.json`;
     populateLoadDropdown();
   } catch (err) {
     console.error('Save error:', err);
@@ -504,6 +505,8 @@ async function initApp() {
       if (validSessions.length > 0) {
         state.sessionName = validSessions.includes('1785393791901') ? '1785393791901' : validSessions[0];
         select.value = state.sessionName;
+        const tsSpan = document.getElementById('wb-config-timestamp');
+        if (tsSpan) tsSpan.textContent = state.sessionName;
       }
     }
   } catch (e) {
@@ -524,6 +527,8 @@ async function initApp() {
 document.getElementById('wb-session-select').addEventListener('change', async e => {
   state.sessionName = e.target.value;
   etag = null;
+  const tsSpan = document.getElementById('wb-config-timestamp');
+  if (tsSpan) tsSpan.textContent = state.sessionName;
 
   // Clear previously loaded segment data
   cachedLoadData = [];
@@ -592,7 +597,7 @@ document.getElementById('wb-btn-save-config').addEventListener('click', async ()
       hr:   getRange('wb-hr-plot'),
       spec: getRange('wb-spec-plot')
     },
-    segmentsFile: Object.keys(state.loadedCustomSegments || {}).length > 0 ? `wallballs_segments_${state.sessionName}.json` : null
+    segmentsFile: state.segmentsFile
   };
 
   try {
@@ -601,14 +606,17 @@ document.getElementById('wb-btn-save-config').addEventListener('click', async ()
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cfg)
     });
+    
+    const timestampSpan = document.getElementById('wb-config-timestamp');
     if (res.ok) {
-      alert(`Config saved for session ${state.sessionName}`);
+      if (timestampSpan) timestampSpan.textContent = `Saved: ${state.sessionName}`;
     } else {
-      alert('Failed to save config.');
+      if (timestampSpan) timestampSpan.textContent = 'Save Failed';
     }
   } catch (err) {
     console.error('Save config error:', err);
-    alert('Failed to connect to server for saving config.');
+    const timestampSpan = document.getElementById('wb-config-timestamp');
+    if (timestampSpan) timestampSpan.textContent = 'Save Error';
   }
 });
 

@@ -20,5 +20,6 @@ const state = {
   loadedCustomSegments: {},
   selectedTimeRange: null,
   selectedFreqRange: null,
-  data: null
+  data: null,
+  segmentsFile: null
 };
