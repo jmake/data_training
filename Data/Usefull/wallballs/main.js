@@ -225,7 +225,7 @@ let cachedLoadData = [];
 
 async function populateLoadDropdown() {
   try {
-    const res = await fetch('/load_segments?session=wallballs');
+    const res = await fetch(`/load_segments?session=${state.sessionName}`);
     if (res.ok) {
       cachedLoadData = await res.json();
       if (!Array.isArray(cachedLoadData)) cachedLoadData = [];
@@ -301,7 +301,7 @@ document.getElementById('wb-acc-save').addEventListener('click', async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        session: 'wallballs',
+        session: state.sessionName,
         signal: sigText,
         method: segText,
         accPeaks: filteredPeaks,
