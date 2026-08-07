@@ -530,6 +530,11 @@ document.getElementById('wb-session-select').addEventListener('change', async e 
   const tsSpan = document.getElementById('wb-config-timestamp');
   if (tsSpan) tsSpan.textContent = state.sessionName;
 
+  Plotly.purge('wb-time-plot');
+  Plotly.purge('wb-hr-plot');
+  Plotly.purge('wb-spec-plot');
+  inited = false;
+
   // Clear previously loaded segment data
   cachedLoadData = [];
   populateLoadDropdown();
@@ -575,8 +580,9 @@ document.getElementById('wb-btn-scan').addEventListener('click', async () => {
 document.getElementById('wb-btn-save-config').addEventListener('click', async () => {
   const getRange = (id) => {
     const el = document.getElementById(id);
-    if (el && el._fullLayout && el._fullLayout.xaxis && el._fullLayout.xaxis.range) {
-      return el._fullLayout.xaxis.range.slice();
+    if (el && el._fullLayout && el._fullLayout.xaxis) {
+      if (el._fullLayout.xaxis.autorange === true) return null;
+      if (el._fullLayout.xaxis.range) return el._fullLayout.xaxis.range.slice();
     }
     return null;
   };
