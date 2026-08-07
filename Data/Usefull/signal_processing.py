@@ -115,7 +115,7 @@ def load_session(name, clean="raw", seg_method="none", seg_mode="prominence", hr
     hr_peaks = []
     hr_segments = []
     hr_dom_freq = 0.0
-    if name == "wallballs" and seg_method == "peaks" and len(hr["bpm"]) > 2:
+    if seg_method == "peaks" and len(hr["bpm"]) > 2:
         segmenter = HeartRateSegmenter(hr["t"], hr["bpm"])
         t_start = acc["t"][0] if len(acc["t"]) > 0 else 0.0
         t_end = acc["t"][-1] if len(acc["t"]) > 0 else 0.0
@@ -123,7 +123,7 @@ def load_session(name, clean="raw", seg_method="none", seg_mode="prominence", hr
 
     acc_peaks = []
     acc_segments = []
-    if name == "wallballs" and acc_seg in ("mins", "maxs", "zeros", "critical", "inflection") and len(acc["t"]) > 2:
+    if acc_seg in ("mins", "maxs", "zeros", "critical", "inflection") and len(acc["t"]) > 2:
         sig_data = acc.get(sig_name, acc["x"])
         dt = acc["t"][1] - acc["t"][0]
         fs = 1.0 / dt if dt > 0 else 50.0
