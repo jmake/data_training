@@ -1,5 +1,6 @@
 // Global State
 const state = {
+  sessionName: 'wallballs',
   signal: 'x',
   mathOp: 'curve',
   clean: 'iqr',

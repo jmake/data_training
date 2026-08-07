@@ -1,7 +1,9 @@
 import os
 import math
+import re
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+CURRENT_SCAN_PATH = os.path.abspath(os.path.join(BASE, "..", "WallBalls"))
 
 SESSIONS = {
     "rowing": {
@@ -17,6 +19,69 @@ SESSIONS = {
         "hr":  "polar_h10_1d61cd3d_1785393791901_hr.txt",
     }
 }
+
+def scan_sessions(root_dir):
+    global CURRENT_SCAN_PATH
+    CURRENT_SCAN_PATH = root_dir
+    temp_groups = {}
+    
+    # Recursively find all files
+    for dirpath, _, filenames in os.walk(root_dir):
+        for fname in filenames:
+            if not fname.lower().endswith(".txt"):
+                continue
+            
+            # Extract timestamp and suffix (ACC or HR)
+            # Regex expects an optional underscore, exactly 13 digits, optional underscore, and a word before .txt
+            match = re.search(r"_?(\d{13})(?:_([a-zA-Z0-9]+))?\.txt$", fname, re.IGNORECASE)
+            if not match:
+                continue
+            
+            timestamp = match.group(1)
+            suffix = match.group(2)
+            
+            if not suffix:
+                continue
+                
+            suffix = suffix.lower()
+            if suffix not in ["acc", "hr"]:
+                continue
+                
+            if timestamp not in temp_groups:
+                temp_groups[timestamp] = {}
+                
+            temp_groups[timestamp][suffix] = os.path.join(dirpath, fname)
+            
+    # Validate and add to SESSIONS
+    for ts, files in temp_groups.items():
+        if "acc" in files and "hr" in files:
+            acc_path = files["acc"]
+            hr_path = files["hr"]
+            
+            try:
+                # Validate ACC (expecting 4 columns on first line)
+                with open(acc_path, "r") as f:
+                    first_line = f.readline().strip()
+                    if len(first_line.split(",")) != 4:
+                        print(f"Error: {acc_path} has invalid format (not 4 columns).")
+                        continue
+                        
+                # Validate HR (expecting 2 columns on first line)
+                with open(hr_path, "r") as f:
+                    first_line = f.readline().strip()
+                    if len(first_line.split(",")) != 2:
+                        print(f"Error: {hr_path} has invalid format (not 2 columns).")
+                        continue
+                        
+                SESSIONS[ts] = {
+                    "acc": acc_path,
+                    "hr": hr_path
+                }
+            except Exception as e:
+                print(f"Error reading files for session {ts}: {e}")
+
+# Call the scanner immediately to populate SESSIONS
+scan_sessions(CURRENT_SCAN_PATH)
 
 _cache = {}
 

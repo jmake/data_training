@@ -7,16 +7,23 @@ async function fetchData() {
     if (etag) {
       headers['If-None-Match'] = etag;
     }
-    const url = `/data/wallballs?clean=${state.clean}&seg_method=${state.segMethod}&seg_mode=${state.segMode}` + 
+    const url = `/data/${state.sessionName}?clean=${state.clean}&seg_method=${state.segMethod}&seg_mode=${state.segMode}` + 
                 `&signal=${state.signal}&math_op=${state.mathOp}&low_cut=${state.lowCut}&high_cut=${state.highCut}&acc_seg=${state.accSeg}` +
                 (state.hrFreq ? `&hr_freq=${state.hrFreq}` : '');
     const res = await fetch(url, { headers });
     if (res.status === 304) {
       return;
     }
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 404) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || `Data for session '${state.sessionName}' not found.`);
+      }
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    const data = await res.json();
     etag = res.headers.get('ETag');
-    state.data = await res.json();
+    state.data = data;
 
     // Populate editable ACC copies
     state.accPeaks = state.data.acc_peaks ? [...state.data.acc_peaks] : [];
@@ -468,5 +475,75 @@ document.getElementById('wb-acc-reset').addEventListener('click', () => {
   renderTimeDomain(state.data, state);
 });
 
-// Initial Load
-fetchData();
+// Start app
+async function initApp() {
+  try {
+    const res = await fetch('/sessions?sport=wallballs');
+    if (res.ok) {
+      const data = await res.json();
+      const select = document.getElementById('wb-session-select');
+      select.innerHTML = '';
+      
+      data.sessions.forEach(sess => {
+        const option = document.createElement('option');
+        option.value = sess;
+        
+        if (sess.length === 13 && !isNaN(sess)) {
+          // It's a timestamp, format it nicely
+          const d = new Date(parseInt(sess));
+          const dateStr = d.toLocaleDateString(undefined, {month: 'short', day: '2-digit', year: 'numeric'});
+          const timeStr = d.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'});
+          option.textContent = `${dateStr} - ${timeStr}`;
+        } else {
+          option.textContent = sess;
+        }
+        
+        select.appendChild(option);
+      });
+      
+      if (data.sessions.length > 0) {
+        state.sessionName = data.sessions.includes('1785393791901') ? '1785393791901' : data.sessions[0];
+        select.value = state.sessionName;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load sessions:', e);
+  }
+
+  fetchData();
+}
+
+document.getElementById('wb-session-select').addEventListener('change', e => {
+  state.sessionName = e.target.value;
+  etag = null; // Clear etag cache when switching sessions
+  fetchData();
+});
+
+document.getElementById('wb-btn-scan').addEventListener('click', async () => {
+  const pathInput = document.getElementById('wb-scan-path').value;
+  try {
+    const res = await fetch('/scan_path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: pathInput })
+    });
+    
+    if (!res.ok) {
+      if (res.status === 400) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to scan directory.');
+      } else {
+        alert('Server error while scanning directory.');
+      }
+      return;
+    }
+    
+    // Rescan successful, reload dropdown
+    initApp();
+  } catch (e) {
+    console.error('Scan failed', e);
+    alert('Failed to connect to server for scanning.');
+  }
+});
+
+initApp();

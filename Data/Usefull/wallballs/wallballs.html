@@ -16,6 +16,26 @@
   </header>
 
   <div class="container">
+    <!-- Session Selection Card -->
+    <div class="chart-card" style="margin-bottom: 20px;">
+      <div class="chart-header">
+        <span class="chart-title">Session Selection</span>
+      </div>
+      <div class="flex-col-gap20" style="padding: 15px;">
+        <div class="flex-center-gap8">
+          <label for="wb-scan-path">Scan Path:</label>
+          <input type="text" id="wb-scan-path" class="clean-select" style="flex: 1; max-width: 600px;" value="/home/somebody/z2026_3/Github/data_training/Data/WallBalls">
+          <button id="wb-btn-scan" class="primary-btn">Scan Directory</button>
+        </div>
+        <div class="flex-center-gap8">
+          <label for="wb-session-select">Select Data Session:</label>
+          <select id="wb-session-select" class="clean-select" style="max-width: 300px;">
+            <option value="wallballs" selected>wallballs</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
     <!-- Combined Processing & Analysis Card -->
     <div class="chart-card">
       <div class="chart-header">

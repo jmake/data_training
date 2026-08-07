@@ -3,12 +3,33 @@ import json
 import numpy as np
 
 from data_loader import BASE, SESSIONS, read_acc
+import data_loader
 from signal_processing import CLEANERS, load_session
 
 
+def handle_get_sessions(handler, params):
+    sport_filter = params.get("sport", [None])[0]
+    sessions_list = []
+    
+    for key, data in SESSIONS.items():
+        if sport_filter:
+            acc_path = data.get("acc", "").lower()
+            if sport_filter.lower() in acc_path or sport_filter.lower() == key.lower():
+                sessions_list.append(key)
+        else:
+            sessions_list.append(key)
+            
+    payload = json.dumps({"sessions": sessions_list}).encode()
+    handler.send_response(200)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Access-Control-Allow-Origin", "*")
+    handler.send_header("Content-Length", str(len(payload)))
+    handler.end_headers()
+    handler.wfile.write(payload)
+
 def handle_load_segments(handler, params):
     session_name = params.get("session", ["wallballs"])[0]
-    fpath = os.path.join(BASE, f"custom_segments_{session_name}.json")
+    fpath = os.path.join(data_loader.CURRENT_SCAN_PATH, f"wallballs_segments_{session_name}.json")
     if os.path.exists(fpath):
         with open(fpath, "r") as f:
             content = f.read().encode("utf-8")
@@ -26,7 +47,7 @@ def handle_save_segments(handler, post_data):
     try:
         data = json.loads(post_data.decode('utf-8'))
         session_name = data.get("session", "wallballs")
-        fpath = os.path.join(BASE, f"custom_segments_{session_name}.json")
+        fpath = os.path.join(data_loader.CURRENT_SCAN_PATH, f"wallballs_segments_{session_name}.json")
         existing_data = []
         if os.path.exists(fpath):
             with open(fpath, "r") as f:
@@ -58,6 +79,33 @@ def handle_save_segments(handler, post_data):
         handler.end_headers()
         print("Error saving segments:", e)
 
+def handle_scan_path(handler, post_data):
+    try:
+        data = json.loads(post_data.decode('utf-8'))
+        raw_path = data.get("path", "")
+        new_path = os.path.abspath(os.path.expanduser(raw_path))
+        
+        if not os.path.exists(new_path) or not os.path.isdir(new_path):
+            payload = json.dumps({"error": f"Directory does not exist: {new_path}"}).encode()
+            handler.send_response(400)
+            handler.send_header("Content-Type", "application/json")
+            handler.send_header("Content-Length", str(len(payload)))
+            handler.end_headers()
+            handler.wfile.write(payload)
+            return
+            
+        data_loader.scan_sessions(new_path)
+        
+        payload = json.dumps({"status": "ok", "path": new_path}).encode()
+        handler.send_response(200)
+        handler.send_header("Content-Type", "application/json")
+        handler.send_header("Content-Length", str(len(payload)))
+        handler.end_headers()
+        handler.wfile.write(payload)
+    except Exception as e:
+        handler.send_response(500)
+        handler.end_headers()
+        print("Error scanning path:", e)
 
 def handle_get_data(handler, path, params):
     name = path[6:]  # strip "/data/"
@@ -182,7 +230,17 @@ def handle_get_data(handler, path, params):
         high_cut = 2.0
     acc_seg = params.get("acc_seg", ["none"])[0]
 
-    payload, etag = load_session(name, clean, seg_method, seg_mode, hr_freq, sig_name, math_op, low_cut, high_cut, acc_seg)
+    try:
+        payload, etag = load_session(name, clean, seg_method, seg_mode, hr_freq, sig_name, math_op, low_cut, high_cut, acc_seg)
+    except FileNotFoundError:
+        payload = json.dumps({"error": f"Session files for '{name}' not found on disk."}).encode()
+        handler.send_response(404)
+        handler.send_header("Content-Type", "application/json")
+        handler.send_header("Access-Control-Allow-Origin", "*")
+        handler.send_header("Content-Length", str(len(payload)))
+        handler.end_headers()
+        handler.wfile.write(payload)
+        return
 
     if handler.headers.get("If-None-Match") == etag:
         handler.send_response(304); handler.end_headers(); return

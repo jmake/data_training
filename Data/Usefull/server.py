@@ -21,7 +21,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from data_loader import BASE, SESSIONS
 from signal_processing import CLEANERS
 from static_files import serve_static_file
-from api_routes import handle_load_segments, handle_save_segments, handle_get_data
+from api_routes import handle_load_segments, handle_save_segments, handle_get_data, handle_get_sessions, handle_scan_path
 
 # ── HTTP handler ──────────────────────────────────────────────────────────────
 
@@ -31,7 +31,9 @@ class Handler(BaseHTTPRequestHandler):
         path   = parsed.path
         params = parse_qs(parsed.query)
 
-        if path.startswith("/load_segments"):
+        if path == "/sessions":
+            handle_get_sessions(self, params)
+        elif path.startswith("/load_segments"):
             handle_load_segments(self, params)
         elif path.startswith("/data/"):
             handle_get_data(self, path, params)
@@ -44,6 +46,10 @@ class Handler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             handle_save_segments(self, post_data)
+        elif parsed.path == "/scan_path":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            handle_scan_path(self, post_data)
         else:
             self.send_response(404)
             self.end_headers()
