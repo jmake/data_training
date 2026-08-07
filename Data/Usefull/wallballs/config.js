@@ -6,7 +6,7 @@ const PLOTLY_CFG = {
 };
 
 const baseLayout = (titleY) => ({
-  uirevision: true,
+  uirevision: state.sessionName,
   paper_bgcolor: 'transparent',
   plot_bgcolor: 'transparent',
   margin: { l: 60, r: 20, t: 10, b: 40 },

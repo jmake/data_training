@@ -20,7 +20,6 @@ function setupSync(ids) {
             const tgtEl = document.getElementById(tgtId);
             if (tgtEl && tgtEl._fullLayout) {
               const tgtXa = tgtEl._fullLayout.xaxis;
-              if (update["xaxis.autorange"] && tgtXa.autorange === true) return;
               if (update["xaxis.range"]) {
                 const r = update["xaxis.range"];
                 if (tgtXa.autorange === false && tgtXa.range &&
@@ -34,7 +33,7 @@ function setupSync(ids) {
           }
         });
       }
-      syncing = false;
+      setTimeout(() => { syncing = false; }, 50);
     });
   });
 }

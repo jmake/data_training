@@ -515,7 +515,12 @@ async function initApp() {
 
 document.getElementById('wb-session-select').addEventListener('change', e => {
   state.sessionName = e.target.value;
-  etag = null; // Clear etag cache when switching sessions
+  etag = null;
+
+  // Clear previously loaded segment data
+  cachedLoadData = [];
+  populateLoadDropdown();
+
   fetchData();
 });
 
