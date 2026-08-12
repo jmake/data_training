@@ -121,7 +121,7 @@ def fit_timestamp(dt: datetime) -> int:
     return int((dt - FIT_EPOCH).total_seconds())
 
 
-def build_ramp_hr_fit(path, waypoints=None):
+def build_ramp_hr_fit(path, waypoints=None, start_dt=None):
     """Piecewise-linear HR ramp, 1s sampling, built from waypoints [(t0,hr0), (t1,hr1), ...]."""
     if waypoints is None:
         waypoints = [(0, 50), (30, 60), (60, 135), (120, 150), (180, 100)]
@@ -136,19 +136,24 @@ def build_ramp_hr_fit(path, waypoints=None):
             samples.append((t, hr))
     samples.append(waypoints[-1])
 
-    write_fit_from_samples(samples, path)
+    write_fit_from_samples(samples, path, start_dt=start_dt)
     return samples
 
 
-def write_fit_from_samples(samples, path):
-    """samples: list of (t_seconds_from_start, heart_rate) -> writes a .fit file."""
+def write_fit_from_samples(samples, path, start_dt=None):
+    """samples: list of (t_seconds_from_start, heart_rate) -> writes a .fit file.
+    start_dt: timezone-aware datetime for the session start (defaults to now, UTC)."""
+    if start_dt is None:
+        start_dt = datetime.now(timezone.utc)
+    elif start_dt.tzinfo is None:
+        start_dt = start_dt.replace(tzinfo=timezone.utc)
+
     writer = FitFileWriter()
 
     writer.define_message(
         "file_id", 0,
         [(0, "type", "enum"), (1, "manufacturer", "uint16"), (4, "time_created", "uint32")],
     )
-    start_dt = datetime.now(timezone.utc)
     writer.write_data("file_id", {
         "type": 4,               # activity
         "manufacturer": 255,     # development
@@ -247,7 +252,17 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Write time,hr data to a .fit file.")
     parser.add_argument("--file", help="Input .txt/.csv file with time,hr columns (comma-separated).")
+    parser.add_argument("--date", help="Session start date/time, e.g. '2026-08-05' or '2026-08-05 07:30:00' "
+                                        "(local time assumed UTC). Defaults to now.")
     args = parser.parse_args()
+
+    start_dt = None
+    if args.date:
+        try:
+            start_dt = datetime.strptime(args.date, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            start_dt = datetime.strptime(args.date, "%Y-%m-%d")
+        start_dt = start_dt.replace(tzinfo=timezone.utc)
 
     script_dir = Path(__file__).resolve().parent
 
@@ -256,13 +271,13 @@ if __name__ == "__main__":
         samples = read_time_hr_csv(input_path)
         out_path = (input_path if input_path.is_absolute() else script_dir / input_path).with_suffix(".fit")
 
-        write_fit_from_samples(samples, out_path)
+        write_fit_from_samples(samples, out_path, start_dt=start_dt)
         print(f"Wrote {len(samples)} records to {out_path}")
 
         validate_fit(out_path, samples)
     else:
         out_path = script_dir / "ramp_hr.fit"
-        samples = build_ramp_hr_fit(out_path)
+        samples = build_ramp_hr_fit(out_path, start_dt=start_dt)
         print(f"Wrote {len(samples)} records to {out_path}")
 
         validate_fit(out_path, samples)
