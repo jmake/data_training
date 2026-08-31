@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multi-Device BLE Heart Rate Monitor</title>
+<script src="https://cdn.plot.ly/plotly-2.35.3.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-color: #0b0f19;
+    --card-bg: #151d30;
+    --text-color: #f3f4f6;
+    --text-muted: #9ca3af;
+    --border-color: #24324f;
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+    --success: #10b981;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 24px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    background: linear-gradient(to right, #818cf8, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 15px;
+    margin-bottom: 24px;
+  }
+
+  .control-panel {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    padding: 12px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 8px;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  button:hover {
+    background: var(--primary-hover);
+  }
+
+  button:active {
+    transform: scale(0.98);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .device-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .device-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background-color: var(--device-color, var(--primary));
+  }
+
+  .device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+
+  .device-name {
+    font-weight: 700;
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  .device-type {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--text-muted);
+  }
+
+  .device-bpm {
+    font-size: 36px;
+    font-weight: 800;
+    margin: 12px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .device-bpm span {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  .device-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .disconnect-btn {
+    background: var(--danger);
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+
+  .disconnect-btn:hover {
+    background: var(--danger-hover);
+  }
+
+  #chart {
+    width: 100%;
+    height: 400px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+
+  #log {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: #060913;
+    color: var(--success);
+    padding: 16px;
+    height: 180px;
+    overflow-y: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>Multi-Device Heart Rate Monitor</h1>
+<p class="subtitle">Connect to multiple BLE heart rate sensors (Polar, Amazfit, etc.) simultaneously. Visualization updates in real-time via Plotly.</p>
+
+<div class="control-panel">
+  <button id="scanBtn">Scan & Connect Device</button>
+</div>
+
+<div class="device-grid" id="deviceGrid">
+  <!-- Dynamic device cards will be inserted here -->
+</div>
+
+<div id="chart"></div>
+<div id="log"></div>
+
+<script>
+const HEART_RATE_SERVICE = 0x180D;
+const HEART_RATE_MEASUREMENT_CHAR = 0x2A37;
+
+const COLOR_PALETTE = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#3b82f6', '#ef4444'];
+let colorIndex = 0;
+
+const scanBtn = document.getElementById('scanBtn');
+const deviceGrid = document.getElementById('deviceGrid');
+const logEl = document.getElementById('log');
+
+let connectedDevices = [];
+const MAX_POINTS = 60; // rolling window size for plot
+let chartInitialized = false;
+
+function log(msg) {
+  const time = new Date().toLocaleTimeString();
+  logEl.textContent += `[${time}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function getNextColor() {
+  const color = COLOR_PALETTE[colorIndex];
+  colorIndex = (colorIndex + 1) % COLOR_PALETTE.length;
+  return color;
+}
+
+function updateChart() {
+  const data = connectedDevices.map(d => ({
+    x: [...d.x],
+    y: [...d.y],
+    mode: 'lines+markers',
+    line: { color: d.color, width: 2.5 },
+    marker: { size: 5 },
+    name: d.name
+  }));
+
+  const layout = {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    margin: { t: 24, r: 24, b: 40, l: 50 },
+    xaxis: { 
+      title: 'Time', 
+      type: 'date',
+      gridcolor: '#1e293b',
+      tickfont: { color: '#9ca3af' },
+      titlefont: { color: '#9ca3af' }
+    },
+    yaxis: { 
+      title: 'Heart Rate (BPM)', 
+      rangemode: 'tozero',
+      gridcolor: '#1e293b',
+      tickfont: { color: '#9ca3af' },
+      titlefont: { color: '#9ca3af' }
+    },
+    legend: {
+      font: { color: '#f3f4f6' }
+    }
+  };
+
+  if (!chartInitialized) {
+    Plotly.newPlot('chart', data, layout, { responsive: true, displayModeBar: false });
+    chartInitialized = true;
+  } else {
+    Plotly.react('chart', data, layout, { responsive: true, displayModeBar: false });
+  }
+}
+
+
+function parseHeartRate(dataView) {
+  const flags = dataView.getUint8(0);
+  const rate16Bits = flags & 0x1;
+  const energyExpendedPresent = (flags >> 3) & 0x1;
+  const rrIntervalPresent = (flags >> 4) & 0x1;
+
+  let index = 1;
+  let heartRate;
+
+  if (rate16Bits) {
+    heartRate = dataView.getUint16(index, true);
+    index += 2;
+  } else {
+    heartRate = dataView.getUint8(index);
+    index += 1;
+  }
+
+  return heartRate;
+}
+
+function renderDevices() {
+  deviceGrid.innerHTML = '';
+  connectedDevices.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'device-card';
+    card.style.setProperty('--device-color', d.color);
+
+    card.innerHTML = `
+      <div class="device-header">
+        <div class="device-name" title="${d.name}">${d.name}</div>
+        <div class="device-type">${d.type}</div>
+      </div>
+      <div class="device-bpm" id="bpm-${d.id}">
+        ${d.y.length > 0 ? d.y[d.y.length - 1] : '--'} <span>bpm</span>
+      </div>
+      <div class="device-footer">
+        <span style="font-size: 11px; color: var(--text-muted);">ID: ${d.id.substring(0, 8)}...</span>
+        <button class="disconnect-btn" onclick="disconnectDevice('${d.id}')">Disconnect</button>
+      </div>
+    `;
+    deviceGrid.appendChild(card);
+  });
+}
+
+async function scanAndConnect() {
+  if (!navigator.bluetooth) {
+    log('Web Bluetooth is not supported in this browser.');
+    alert('Web Bluetooth is not supported in this browser. Please use Chrome/Edge.');
+    return;
+  }
+
+  try {
+    log('Opening BLE chooser for Heart Rate devices (0x180D)...');
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [HEART_RATE_SERVICE] }],
+      optionalServices: [HEART_RATE_SERVICE]
+    });
+
+    if (connectedDevices.some(d => d.id === device.id)) {
+      log(`Device ${device.name || device.id} is already connected.`);
+      return;
+    }
+
+    const deviceName = device.name || 'Unnamed HR Sensor';
+    const isPolar = deviceName.toLowerCase().includes('polar');
+    const typeLabel = isPolar ? 'Polar' : 'Standard HR';
+    log(`Connecting to ${typeLabel} device: ${deviceName}`);
+
+    device.addEventListener('gattserverdisconnected', () => onDisconnected(device.id));
+
+    const server = await device.gatt.connect();
+    log(`GATT connected to ${deviceName}`);
+
+    const service = await server.getPrimaryService(HEART_RATE_SERVICE);
+    const hrChar = await service.getCharacteristic(HEART_RATE_MEASUREMENT_CHAR);
+
+    const deviceState = {
+      id: device.id,
+      name: deviceName,
+      type: typeLabel,
+      device: device,
+      server: server,
+      characteristic: hrChar,
+      color: getNextColor(),
+      x: [],
+      y: []
+    };
+
+    await hrChar.startNotifications();
+    hrChar.addEventListener('characteristicvaluechanged', (event) => {
+      const bpm = parseHeartRate(event.target.value);
+      const now = new Date();
+      
+      deviceState.x.push(now);
+      deviceState.y.push(bpm);
+
+      if (deviceState.x.length > MAX_POINTS) {
+        deviceState.x.shift();
+        deviceState.y.shift();
+      }
+
+      const bpmDisplay = document.getElementById(`bpm-${device.id}`);
+      if (bpmDisplay) {
+        bpmDisplay.innerHTML = `${bpm} <span>bpm</span>`;
+      }
+      updateChart();
+    });
+
+    connectedDevices.push(deviceState);
+    renderDevices();
+    updateChart();
+    log(`Successfully tracking ${deviceName}`);
+
+  } catch (err) {
+    log(`Error: ${err.message}`);
+  }
+}
+
+function onDisconnected(deviceId) {
+  const index = connectedDevices.findIndex(d => d.id === deviceId);
+  if (index !== -1) {
+    log(`Device disconnected: ${connectedDevices[index].name}`);
+    connectedDevices.splice(index, 1);
+    renderDevices();
+    updateChart();
+  }
+}
+
+async function disconnectDevice(deviceId) {
+  const deviceState = connectedDevices.find(d => d.id === deviceId);
+  if (deviceState && deviceState.device.gatt.connected) {
+    log(`Disconnecting ${deviceState.name}...`);
+    await deviceState.device.gatt.disconnect();
+  }
+}
+
+scanBtn.addEventListener('click', scanAndConnect);
+</script>
+
+</body>
+</html>
