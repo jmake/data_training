@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  
+  <!--
+  https://bandarra.me/posts/Fitness-Tracking-with-Web-Bluetooth  
+  https://github.com/GoogleChromeLabs/rowing-monitor
+  
+  https://www.concept2.co.uk/files/pdf/us/monitors/PM5_BluetoothSmartInterfaceDefinition.pdf
+
+  https://github.com/paschmann/concept2_rower
+  https://github.com/tijmenvangulik/ErgometerJS
+  https://medium.com/hackernoon/making-an-ios-zwift-clone-to-save-15-a-month-part-1-core-bluetooth-9925bba79f7a
+  https://github.com/hungtruong/Zswift/tree/blog_part_1
+  -->  
+  
+  <title>Connect to Concept2 PM5</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    #statusIndicator {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: red;
+      display: inline-block;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Concept2 PM5 BLE Connection</h2>
+  <button onclick="connectToPM5()">Connect</button>
+  <span id="statusIndicator" title="Connection Status"></span>
+
+  <pre id="id_log"></pre>
+
+
+<script>
+  function parseValue(arrayBuffer) 
+  {
+    const length = arrayBuffer.byteLength;
+
+    if (length === 0) return '[Empty buffer]';
+
+    try {
+        const text = new TextDecoder('utf-8').decode(arrayBuffer);
+        if (/^[\x20-\x7E\r\n\t]+$/.test(text)) {
+        return text.trim();
+        }
+    } catch (_) {  }
+
+    const typedArrayTypes = [
+        { Type: Float32Array, label: 'Float32Array', size: 4 },
+        { Type: Uint16Array,  label: 'Uint16Array',  size: 2 },
+        { Type: Int16Array,   label: 'Int16Array',   size: 2 },
+        { Type: Uint8Array,   label: 'Uint8Array',   size: 1 }
+    ];
+
+    for (const { Type, label, size } of typedArrayTypes) {
+        if (length % size === 0) {
+        try {
+            return new Type(arrayBuffer);
+        } catch (_) {}
+        }
+    }
+
+    return `[Unrecognized data format] (length: ${length} bytes)`;
+  }
+
+  async function update_notification(event)  
+  {
+      let characteristic = event.target; 
+      const value = characteristic.value;
+      const arrayBuffer = value.buffer; 
+      console.log( arrayBuffer ); 
+//        const intArray = new Int8Array(arrayBuffer);
+//        console.log( intArray ); 
+
+      const result = parseValue(arrayBuffer); 
+      console.log( result ); 
+      log( result ); 
+  }
+
+  async function update_text(event)  
+  {
+    const decoder = new TextDecoder('utf-8');
+    const value = decoder.decode(event.target.value);
+    console.log(`[text_update] '${value}'`);
+  }
+
+  async function server_get(server, service_id, characteristic_id, event_func) 
+  {
+    let service = await server.getPrimaryService( service_id ); 
+    let characteristic = await service.getCharacteristic( characteristic_id ); 
+
+    await characteristic.startNotifications(); 
+    characteristic.addEventListener('characteristicvaluechanged', event_func); 
+  }
+
+</script>
+
+
+<script>
+  const MID_MULTIPLIER = 256;
+  const HIGH_MULTIPLIER = MID_MULTIPLIER * 256;
+
+  async function update_uint8(event)  // decoder 
+  {
+    let characteristic = event.target; 
+    const value = characteristic.value;
+    const arrayBuffer = value.buffer; 
+    const valueArray = new Uint8Array(arrayBuffer);
+
+    const distance = (valueArray[3] + (valueArray[4] * MID_MULTIPLIER) + (valueArray[5] * HIGH_MULTIPLIER)) * 0.1;
+    const timeElapsed = (valueArray[0] + (valueArray[1] * MID_MULTIPLIER) + (valueArray[2] * HIGH_MULTIPLIER)) * 0.01;
+
+    let msg = `distance:'${distance}' time:'${timeElapsed}' `; 
+    console.log(msg);
+    
+    Log(msg);
+  }
+
+  let device;
+  let server;
+
+  let getC2UUID = (id) => `ce06${id}-43e5-11e4-916c-0800200c9a66`.toLowerCase();
+
+  let informationService = getC2UUID('0010');
+  let serialNumber = getC2UUID('0012'); 
+
+  let rowingService = getC2UUID('0030');
+  let rowingGeneralStatus = getC2UUID('0031'); 
+
+  let controlService = getC2UUID('0020');
+
+  const options = {
+    filters: [{ services: [getC2UUID('0000')] }],
+    optionalServices: [informationService, controlService, rowingService]
+  };
+    
+  async function connectToPM5() 
+  {
+    try 
+    {
+      Log('Requesting PM5...');
+
+      device = await navigator.bluetooth.requestDevice(options);
+      device.addEventListener('gattserverdisconnected', onDisconnected);
+
+      server = await device.gatt.connect();
+      updateIndicator(true);
+      Log(`Connected to: "${server.device.name}" (${server.device.id})`);
+
+      device.gatt.connect()
+      .then(server => {
+        return server.getPrimaryService( rowingService )
+      }).then(service => service.getCharacteristic( rowingGeneralStatus )) 
+      .then(characteristic => {
+          return characteristic.startNotifications().then(() => {
+          characteristic.addEventListener('characteristicvaluechanged', e => {
+              //update_notification( e ); // :) 
+              update_uint8(e); 
+
+              let dataView = e.target.value; 
+              console.log( dataView ); 
+            });
+          });
+      })
+      .catch(error => {
+          console.error('Error:', error);
+      });
+    } catch (error) {
+      Log('Error: ' + error.message);
+      updateIndicator(false);
+    }
+  }
+
+  function onDisconnected() 
+  {
+    Log('Disconnected from PM5');
+    updateIndicator(false);
+  }
+
+  function updateIndicator(isConnected) 
+  {
+    const indicator = document.getElementById('statusIndicator');
+    indicator.style.backgroundColor = isConnected ? 'blue' : 'red';
+  }
+
+  function Log(message) 
+  {
+    const logEl = document.getElementById('id_log');
+    logEl.textContent += message + '\n';
+  }
+
+</script>
+
+</body>
+</html>

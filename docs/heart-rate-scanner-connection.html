@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BLE Heart Rate Scanner — Amazfit T-Rex 3</title>
+<script src="https://cdn.plot.ly/plotly-2.35.3.min.js"></script>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 16px; color: #1a1a1a; }
+  #chart { width: 100%; height: 320px; margin: 16px 0; }
+  h1 { font-size: 20px; }
+  button { padding: 10px 16px; font-size: 14px; cursor: pointer; border: 1px solid #333; background: #111; color: #fff; border-radius: 6px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #status { margin: 16px 0; padding: 10px; border-radius: 6px; background: #f2f2f2; font-size: 14px; }
+  #bpm { font-size: 48px; font-weight: 700; margin: 20px 0; }
+  #log { font-family: monospace; font-size: 12px; background: #000; color: #0f0; padding: 10px; height: 180px; overflow-y: auto; border-radius: 6px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+</style>
+</head>
+<body>
+
+<h1>BLE Heart Rate Scanner</h1>
+<p>Scans for BLE devices advertising the standard Heart Rate Service (<code>0x180D</code>). Targeted for Amazfit T-Rex 3 with "Heart Rate Push" enabled, but works with any standard BLE heart rate monitor.</p>
+
+<div class="row">
+  <button id="scanBtn">Scan & Connect</button>
+  <button id="disconnectBtn" disabled>Disconnect</button>
+</div>
+
+<div id="status">Idle. Click "Scan & Connect" to begin.</div>
+<div id="bpm">-- bpm</div>
+<div id="chart"></div>
+<div id="log"></div>
+
+<script>
+const HEART_RATE_SERVICE = 0x180D;
+const HEART_RATE_MEASUREMENT_CHAR = 0x2A37;
+
+const scanBtn = document.getElementById('scanBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
+const statusEl = document.getElementById('status');
+const bpmEl = document.getElementById('bpm');
+const logEl = document.getElementById('log');
+
+let device = null;
+let server = null;
+let hrChar = null;
+
+// Real-time chart state
+const MAX_POINTS = 60; // rolling window
+let chartX = [];
+let chartY = [];
+let chartInitialized = false;
+
+function initChart() {
+  const data = [{
+    x: chartX,
+    y: chartY,
+    mode: 'lines+markers',
+    line: { color: '#e63946', width: 2 },
+    marker: { size: 4 },
+    name: 'Heart Rate'
+  }];
+
+  const layout = {
+    margin: { t: 20, r: 20, b: 40, l: 50 },
+    xaxis: { title: 'Time', type: 'date' },
+    yaxis: { title: 'BPM', rangemode: 'tozero' },
+    showlegend: false
+  };
+
+  Plotly.newPlot('chart', data, layout, { responsive: true, displayModeBar: false });
+  chartInitialized = true;
+}
+
+function pushChartPoint(bpm) {
+  if (!chartInitialized) initChart();
+
+  const now = new Date();
+  chartX.push(now);
+  chartY.push(bpm);
+
+  if (chartX.length > MAX_POINTS) {
+    chartX.shift();
+    chartY.shift();
+  }
+
+  Plotly.update('chart', { x: [chartX], y: [chartY] });
+}
+
+function resetChart() {
+  chartX = [];
+  chartY = [];
+  if (chartInitialized) {
+    Plotly.update('chart', { x: [chartX], y: [chartY] });
+  }
+}
+
+function log(msg) {
+  const time = new Date().toLocaleTimeString();
+  logEl.textContent += `[${time}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStatus(msg) {
+  statusEl.textContent = msg;
+}
+
+// Parses the standard BLE Heart Rate Measurement characteristic payload
+// per Bluetooth SIG spec (org.bluetooth.characteristic.heart_rate_measurement)
+function parseHeartRate(dataView) {
+  const flags = dataView.getUint8(0);
+  const rate16Bits = flags & 0x1;
+  let heartRate;
+  let index = 1;
+
+  if (rate16Bits) {
+    heartRate = dataView.getUint16(index, true);
+    index += 2;
+  } else {
+    heartRate = dataView.getUint8(index);
+    index += 1;
+  }
+
+  return heartRate;
+}
+
+function handleHeartRateNotification(event) {
+  const value = event.target.value;
+  const bpm = parseHeartRate(value);
+  bpmEl.textContent = `${bpm} bpm`;
+  log(`HR reading: ${bpm} bpm`);
+  pushChartPoint(bpm);
+}
+
+async function scanAndConnect() {
+  if (!navigator.bluetooth) {
+    setStatus('Web Bluetooth is not supported in this browser. Use Chrome/Edge on desktop or Android.');
+    return;
+  }
+
+  try {
+    setStatus('Requesting device... (choose your T-Rex 3 or HR device in the browser prompt)');
+    log('Opening device chooser, filtering by Heart Rate Service (0x180D)...');
+
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [HEART_RATE_SERVICE] }],
+      optionalServices: [HEART_RATE_SERVICE]
+    });
+
+    log(`Device selected: ${device.name || '(unnamed device)'} [${device.id}]`);
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    setStatus(`Connecting to ${device.name || 'device'}...`);
+    server = await device.gatt.connect();
+    log('GATT server connected.');
+
+    setStatus('Getting Heart Rate Service...');
+    const service = await server.getPrimaryService(HEART_RATE_SERVICE);
+    log('Heart Rate Service (0x180D) obtained.');
+
+    setStatus('Getting Heart Rate Measurement characteristic...');
+    hrChar = await service.getCharacteristic(HEART_RATE_MEASUREMENT_CHAR);
+    log('Heart Rate Measurement characteristic (0x2A37) obtained.');
+
+    await hrChar.startNotifications();
+    hrChar.addEventListener('characteristicvaluechanged', handleHeartRateNotification);
+    log('Subscribed to notifications. Waiting for readings...');
+
+    setStatus(`Connected to ${device.name || 'device'}. Streaming heart rate.`);
+    scanBtn.disabled = true;
+    disconnectBtn.disabled = false;
+
+  } catch (err) {
+    log(`Error: ${err.message}`);
+    setStatus(`Failed: ${err.message}`);
+  }
+}
+
+function onDisconnected() {
+  log('Device disconnected.');
+  setStatus('Disconnected.');
+  bpmEl.textContent = '-- bpm';
+  scanBtn.disabled = false;
+  disconnectBtn.disabled = true;
+  resetChart();
+}
+
+function disconnect() {
+  if (device && device.gatt.connected) {
+    device.gatt.disconnect();
+  }
+}
+
+scanBtn.addEventListener('click', scanAndConnect);
+disconnectBtn.addEventListener('click', disconnect);
+
+initChart();
+</script>
+
+</body>
+</html>
