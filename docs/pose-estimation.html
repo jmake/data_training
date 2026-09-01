@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Real-Time Pose Estimation (PoseNet vs MediaPipe)</title>
+<style>
+  body { margin:0; background:#111; color:#eee; font-family:sans-serif; text-align:center; }
+  #container { position:relative; display:inline-block; margin-top:15px; }
+  video, canvas { position:absolute; top:0; left:0; }
+  #status { margin:10px; font-size:14px; color:#0f0; }
+  #controls { margin-top:15px; }
+  select, button { font-size:14px; padding:6px 10px; margin:0 5px; }
+</style>
+</head>
+<body>
+<h2>Real-Time Human Pose Estimation</h2>
+
+<div id="controls">
+  <label for="modelSelect">Backend:</label>
+  <select id="modelSelect">
+    <option value="posenet">TensorFlow.js - PoseNet</option>
+    <option value="mediapipe">MediaPipe Pose</option>
+  </select>
+  <button id="startBtn">Start</button>
+</div>
+
+<div id="status">Select a backend and press Start.</div>
+<div id="container">
+  <video id="video" width="640" height="480" autoplay muted playsinline></video>
+  <canvas id="canvas" width="640" height="480"></canvas>
+</div>
+
+<!-- TensorFlow.js / PoseNet -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet@2.2.2/dist/posenet.min.js"></script>
+
+<!-- MediaPipe Pose (unpinned, matching versions as in official docs) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const status = document.getElementById('status');
+const modelSelect = document.getElementById('modelSelect');
+const startBtn = document.getElementById('startBtn');
+
+let currentStream = null;
+let posenetAnimationId = null;
+let mediapipeCamera = null;
+let posenetNet = null;
+
+function stopEverything() {
+  if (posenetAnimationId) { cancelAnimationFrame(posenetAnimationId); posenetAnimationId = null; }
+  if (mediapipeCamera) { mediapipeCamera.stop(); mediapipeCamera = null; }
+  if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+async function setupCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480 }, audio:false });
+  currentStream = stream;
+  video.srcObject = stream;
+  return new Promise(resolve => { video.onloadedmetadata = () => resolve(video); });
+}
+
+// ---------- PoseNet ----------
+function drawKeypointsPoseNet(keypoints, minConfidence=0.5) {
+  keypoints.forEach(kp => {
+    if (kp.score >= minConfidence) {
+      ctx.beginPath();
+      ctx.arc(kp.position.x, kp.position.y, 5, 0, 2*Math.PI);
+      ctx.fillStyle = '#00ff00';
+      ctx.fill();
+    }
+  });
+}
+
+function drawSkeletonPoseNet(keypoints, minConfidence=0.5) {
+  // Use PoseNet's own verified adjacency list instead of a hand-rolled one.
+  const adjacentKeyPoints = posenet.getAdjacentKeyPoints(keypoints, minConfidence);
+  adjacentKeyPoints.forEach(([kpA, kpB]) => {
+    ctx.beginPath();
+    ctx.moveTo(kpA.position.x, kpA.position.y);
+    ctx.lineTo(kpB.position.x, kpB.position.y);
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+}
+
+async function runPoseNet() {
+  status.textContent = 'Requesting camera access...';
+  await setupCamera();
+  video.play();
+
+  status.textContent = 'Loading PoseNet model...';
+  posenetNet = await posenet.load({
+    architecture: 'MobileNetV1',
+    outputStride: 16,
+    inputResolution: { width:640, height:480 },
+    multiplier: 0.75
+  });
+  status.textContent = 'PoseNet loaded. Detecting pose...';
+
+  async function detectFrame() {
+    const pose = await posenetNet.estimateSinglePose(video, { flipHorizontal: false });
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    drawKeypointsPoseNet(pose.keypoints);
+    drawSkeletonPoseNet(pose.keypoints);
+    posenetAnimationId = requestAnimationFrame(detectFrame);
+  }
+  detectFrame();
+}
+
+// ---------- MediaPipe ----------
+function onMediaPipeResults(results) {
+  ctx.save();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+  if (results.poseLandmarks) {
+    drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color:'#00ffff', lineWidth:2 });
+    drawLandmarks(ctx, results.poseLandmarks, { color:'#00ff00', radius:4 });
+  }
+  ctx.restore();
+}
+
+async function runMediaPipe() {
+  status.textContent = 'Requesting camera access...';
+  await setupCamera();
+  video.play();
+
+  status.textContent = 'Loading MediaPipe Pose model...';
+  const pose = new Pose({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+  });
+  pose.setOptions({
+    modelComplexity: 1,
+    smoothLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+  pose.onResults(onMediaPipeResults);
+
+  status.textContent = 'MediaPipe loaded. Detecting pose...';
+  mediapipeCamera = new Camera(video, {
+    onFrame: async () => { await pose.send({ image: video }); },
+    width: 640,
+    height: 480
+  });
+  mediapipeCamera.start();
+}
+
+stopEverything();
+runMediaPipe();
+
+/*
+// ---------- Controls ----------
+startBtn.addEventListener('click', async () => {
+  stopEverything();
+  status.textContent = 'Starting...';
+  try {
+    if (modelSelect.value === 'posenet') {
+      await runPoseNet();
+    } else {
+      await runMediaPipe();
+    }
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+    console.error(err);
+  }
+});
+*/
+
+</script>
+</body>
+</html>
